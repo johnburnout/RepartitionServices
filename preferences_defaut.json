@@ -8,11 +8,11 @@
             "contrainte_repartition": null,
             "niveaux": {
                 "6e": {
-                    "max": "",
+                    "max": "2",
                     "fixe": false
                 },
                 "5e": {
-                    "max": "",
+                    "max": "3",
                     "fixe": false
                 },
                 "4e": {
@@ -20,12 +20,12 @@
                     "fixe": false
                 },
                 "3e": {
-                    "max": "",
+                    "max": "2",
                     "fixe": false
                 }
             },
             "nb_niveaux_max": "3",
-            "niveau_souhait": ""
+            "niveau_souhait": "3e"
         },
         "Agnès": {
             "hp": "18.0",
@@ -35,11 +35,11 @@
             "contrainte_repartition": null,
             "niveaux": {
                 "6e": {
-                    "max": "",
+                    "max": "2",
                     "fixe": false
                 },
                 "5e": {
-                    "max": "",
+                    "max": "3",
                     "fixe": false
                 },
                 "4e": {
@@ -47,12 +47,12 @@
                     "fixe": false
                 },
                 "3e": {
-                    "max": "",
+                    "max": "2",
                     "fixe": false
                 }
             },
             "nb_niveaux_max": "3",
-            "niveau_souhait": ""
+            "niveau_souhait": "3e"
         },
         "Hubert": {
             "hp": "18.0",
@@ -93,7 +93,7 @@
                     "fixe": false
                 },
                 "5e": {
-                    "max": "0",
+                    "max": "",
                     "fixe": false
                 },
                 "4e": {
@@ -101,8 +101,8 @@
                     "fixe": false
                 },
                 "3e": {
-                    "max": "0",
-                    "fixe": false
+                    "max": "1",
+                    "fixe": true
                 }
             },
             "nb_niveaux_max": "3",
@@ -135,7 +135,7 @@
                     "fixe": false
                 }
             },
-            "nb_niveaux_max": "3",
+            "nb_niveaux_max": "2",
             "niveau_souhait": ""
         },
         "Lou": {
@@ -173,11 +173,11 @@
             "contrainte_repartition": null,
             "niveaux": {
                 "6e": {
-                    "max": "",
+                    "max": "2",
                     "fixe": false
                 },
                 "5e": {
-                    "max": "1",
+                    "max": "2",
                     "fixe": false
                 },
                 "4e": {
@@ -185,12 +185,12 @@
                     "fixe": false
                 },
                 "3e": {
-                    "max": "2",
+                    "max": "0",
                     "fixe": false
                 }
             },
-            "nb_niveaux_max": "3",
-            "niveau_souhait": ""
+            "nb_niveaux_max": "",
+            "niveau_souhait": "4e"
         }
     },
     "niveaux": [
@@ -230,6 +230,6 @@
         "Lou",
         "Jean"
     ],
-    "etablissement": "Collège La Boétie",
-    "matiere": "Mathématiques"
+    "etablissement": "",
+    "matiere": ""
 }

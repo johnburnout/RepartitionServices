@@ -155,35 +155,28 @@ def verifier_contrainte_blocs_rapide(d, contrainte_blocs):
 # ============================================================
 
 def get_nb_groupes_possibles(nom):
-    """Détermine les nombres de groupes possibles pour un enseignant."""
+    """Détermine les nombres de groupes possibles pour un enseignant (dynamique)."""
     if nom not in data:
-        return [4, 5]
+        return [4, 5]  # valeur par défaut si l'enseignant n'existe pas
     base, sup = data[nom]["horaire"]
     nb_possibles = set()
     
-    # Déterminer les max possibles pour chaque niveau
-    max_6e = min(3, max_par_enseignant.get("6e", 3)) if "6e" in max_par_enseignant else 3
-    max_5e = min(3, max_par_enseignant.get("5e", 3)) if "5e" in max_par_enseignant else 3
-    max_4e = min(3, max_par_enseignant.get("4e", 3)) if "4e" in max_par_enseignant else 3
-    max_3e = min(2, max_par_enseignant.get("3e", 2)) if "3e" in max_par_enseignant else 2
-    
-    if sup == 0:
-        for nb_6e in range(0, max_6e + 1):
-            for nb_5e in range(0, max_5e + 1):
-                for nb_4e in range(0, max_4e + 1):
-                    for nb_3e in range(0, max_3e + 1):
-                        total = nb_6e * 5.5 + (nb_5e + nb_4e + nb_3e) * 4
-                        if abs(total - base) < 0.01:
-                            nb_possibles.add(nb_6e + nb_5e + nb_4e + nb_3e)
-    else:
-        for nb_6e in range(0, max_6e + 1):
-            for nb_5e in range(0, max_5e + 1):
-                for nb_4e in range(0, max_4e + 1):
-                    for nb_3e in range(0, max_3e + 1):
-                        total = nb_6e * 5.5 + (nb_5e + nb_4e + nb_3e) * 4
-                        if base <= total <= base + sup:
-                            nb_possibles.add(nb_6e + nb_5e + nb_4e + nb_3e)
-    
+    # Construire les plages pour chaque niveau
+    plages = []
+    for n in niveaux:
+        max_val = max_par_enseignant.get(n, 3)  # 3 par défaut si absent
+        plages.append(range(0, max_val + 1))
+        
+    # Parcourir toutes les combinaisons de groupes
+    for comb in product(*plages):
+        total_heures = sum(comb[i] * horaire_volume[niveaux[i]] for i in range(len(niveaux)))
+        if sup == 0:
+            if abs(total_heures - base) < 0.01:
+                nb_possibles.add(sum(comb))
+        else:
+            if base <= total_heures <= base + sup:
+                nb_possibles.add(sum(comb))
+                
     return sorted(nb_possibles)
 
 def generer_combinaisons_enseignant(nom, nb_groupes_total, contraintes_utilisateur, nb_niveaux_max=None):
@@ -210,8 +203,6 @@ def generer_combinaisons_enseignant(nom, nb_groupes_total, contraintes_utilisate
     for n in niveaux_autorises:
         # Max global du niveau
         max_val = max_par_enseignant.get(n, 3)
-        if n == "3e":
-            max_val = min(max_val, 2)
         
         # Max utilisateur
         user_max = contraintes_utilisateur[nom][n]["max"]
@@ -297,8 +288,6 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
             prod = 1
             for n in niveaux_autorises:
                 max_val = max_par_enseignant.get(n, 3)
-                if n == "3e":
-                    max_val = min(max_val, 2)
                 user_max = contraintes_utilisateur[e][n]["max"]
                 if user_max is not None:
                     max_val = min(max_val, user_max)

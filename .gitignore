@@ -2,6 +2,7 @@
 .DS_Store
 *.swp
 *.swo
+Thumbs.db
 
 # Python
 __pycache__/
@@ -29,11 +30,25 @@ pip-delete-this-directory.txt
 *.key
 
 # Export temporaire
-export/
+#export/
 temp/
 tmp/
 
-# Fichiers de build
+# Fichiers de build PyInstaller
 dist/
 build/
+*.spec           # fichiers .spec générés par PyInstaller
 *.egg-info/
+
+# Dossiers de préparation des images disque (DMG / ISO)
+RepartitionService_dmg/
+RepartitionServices_iso/
+
+# Fichiers images de distribution
+*.dmg
+*.iso
+*.zip
+*.tar.gz
+
+# Fichiers de configuration de version (s'il est généré automatiquement)
+version.plist    # si vous le générez à chaque build, sinon gardez-le
