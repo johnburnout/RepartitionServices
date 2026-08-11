@@ -38,6 +38,9 @@ class FenetreContraintes:
       
         self.creer_widgets()
       
+        # Gestion de la fermeture par la croix
+        self.parent.protocol("WM_DELETE_WINDOW", self.fermer_fenetre)
+      
         # Recharger les valeurs depuis le moteur dans le tableau
         if parent_principal.fichier_preferences:
             self.charger_valeurs_depuis_moteur()
@@ -129,7 +132,7 @@ class FenetreContraintes:
         menu_fichier.add_separator()
         menu_fichier.add_command(label="🔄 Réinitialiser", command=self.reinitialiser)
         menu_fichier.add_separator()
-        menu_fichier.add_command(label="❌ Fermer", command=self.parent.destroy)
+        menu_fichier.add_command(label="❌ Fermer", command=self.fermer_fenetre)
       
         menu_aide = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Aide", menu=menu_aide)
@@ -241,7 +244,7 @@ class FenetreContraintes:
         ttk.Button(cadre_boutons, text="📂 Charger", command=self.ouvrir_preferences).pack(side=tk.LEFT, padx=5)
         ttk.Button(cadre_boutons, text="🔄 Réinitialiser", command=self.reinitialiser).pack(side=tk.LEFT, padx=5)
         ttk.Button(cadre_boutons, text="🔍 Lancer la recherche", command=self.lancer_recherche, style="Primary.TButton").pack(side=tk.RIGHT, padx=5)
-        ttk.Button(cadre_boutons, text="❌ Fermer", command=self.parent.destroy).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(cadre_boutons, text="❌ Fermer", command=self.fermer_fenetre).pack(side=tk.RIGHT, padx=5)
       
         self.creer_tableau()
         self.parent.update_idletasks()
@@ -251,6 +254,49 @@ class FenetreContraintes:
       
         # Charger les valeurs depuis les préférences
         self.charger_valeurs_depuis_moteur()
+    
+    def fermer_fenetre(self):
+        """Ferme la fenêtre après avoir synchronisé les données."""
+        self.synchroniser_data_avec_interface()
+        # Rafraîchir la fenêtre principale
+        self.parent_principal.mettre_a_jour_donnees()
+        self.parent_principal.mettre_a_jour_affichage()
+        self.parent.destroy()
+    
+    def synchroniser_data_avec_interface(self):
+        """Met à jour les données globales data avec les valeurs HP/HSA/Blocs de l'interface."""
+        from moteur.calcul import data
+        for e in self.enseignants_liste:
+            if e not in self.vars:
+                continue
+            # HP / HSA
+            hp_str = self.vars[e]["hp"].get().strip()
+            hsa_str = self.vars[e]["hsa"].get().strip()
+            if hp_str and hsa_str:
+                try:
+                    hp = float(hp_str.replace(",", "."))
+                    hsa = float(hsa_str.replace(",", "."))
+                    if e in data:
+                        data[e]["horaire"] = (hp, hsa)
+                    else:
+                        data[e] = {
+                            "nom": e,
+                            "horaire": (hp, hsa),
+                            "contrainte_repartition": None
+                        }
+                except ValueError:
+                    pass
+            # Blocs
+            bloc1_str = self.vars[e]["bloc1"].get().strip()
+            bloc2_str = self.vars[e]["bloc2"].get().strip()
+            if bloc1_str and bloc2_str:
+                try:
+                    bloc1 = float(bloc1_str.replace(",", "."))
+                    bloc2 = float(bloc2_str.replace(",", "."))
+                    if e in data:
+                        data[e]["contrainte_repartition"] = (bloc1, bloc2)
+                except ValueError:
+                    pass
     
     def mettre_a_jour_label_fichier(self):
         if self.fichier_preferences:
@@ -318,7 +364,7 @@ class FenetreContraintes:
     
     def a_propos(self):
         messagebox.showinfo("À propos", 
-            "Saisie des contraintes - v2.0\n\n"
+            "Saisie des contraintes - v2.1\n\n"
             "Développé par Jean Roussie\n"
             "Collège La Boétie - Sarlat\n"
             "2026\n\n"
@@ -688,8 +734,10 @@ class FenetreContraintes:
             messagebox.showerror("Erreur", f"L'enseignant '{nom}' existe déjà")
             return
         
+        # Ajout local (plus besoin de synchroniser avec le moteur)
         self.enseignants_liste.append(nom)
         self.parent_principal.enseignants_liste.append(nom)
+        
         self.mettre_a_jour_enseignants()
         self.creer_tableau()
         self.parent.update_idletasks()
@@ -710,6 +758,7 @@ class FenetreContraintes:
         if messagebox.askyesno("Confirmation", f"Supprimer l'enseignant '{nom}' ?"):
             self.enseignants_liste.remove(nom)
             self.parent_principal.enseignants_liste.remove(nom)
+            
             self.mettre_a_jour_enseignants()
             self.creer_tableau()
             self.parent.update_idletasks()
@@ -945,6 +994,9 @@ class FenetreContraintes:
             return
         
         try:
+            # Synchroniser les données avant de sauvegarder
+            self.synchroniser_data_avec_interface()
+            
             prefs = {
                 "enseignants": {},
                 "niveaux": self.niveaux_data_liste,
@@ -1028,26 +1080,31 @@ class FenetreContraintes:
         self.statusbar.config(text="🔄 Réinitialisé")
     
     def lancer_recherche(self):
-        from moteur.calcul import rechercher_solutions
+        from moteur.calcul import rechercher_solutions, data
         
         self.parent_principal.etablissement = self.var_etablissement.get().strip()
         self.parent_principal.matiere = self.var_matiere.get().strip()
         self.parent_principal.mettre_a_jour_titre()
         
         if not self.compatible_globale:
-            messagebox.showerror("Erreur", 
-                "Impossible de lancer la recherche : le total des heures des niveaux n'est pas compatible "
-                "avec le total HP+HSA des enseignants.\n\n"
-                f"Total niveaux : {self.calculer_total_heures_niveaux():.1f}h\n"
-                f"Total HP : {self.calculer_total_hp_enseignants()[0]:.1f}h\n"
-                f"Total HSA : {self.calculer_total_hp_enseignants()[1]:.1f}h\n"
-                f"Total max : {self.calculer_total_hp_enseignants()[0] + self.calculer_total_hp_enseignants()[1]:.1f}h")
+            messagebox.showerror("Erreur",
+              "Impossible de lancer la recherche : le total des heures des niveaux n'est pas compatible "
+              "avec le total HP+HSA des enseignants.\n\n"
+              f"Total niveaux : {self.calculer_total_heures_niveaux():.1f}h\n"
+              f"Total HP : {self.calculer_total_hp_enseignants()[0]:.1f}h\n"
+              f"Total HSA : {self.calculer_total_hp_enseignants()[1]:.1f}h\n"
+              f"Total max : {self.calculer_total_hp_enseignants()[0] + self.calculer_total_hp_enseignants()[1]:.1f}h")
             return
         
+        # Synchroniser les données avant la recherche
+        self.synchroniser_data_avec_interface()
+        
+        # Récupération des contraintes
         contraintes = {}
         niveaux_souhaites = {}
         nb_niveaux_max = {}
         
+        # Contraintes de répartition (blocs) – mise à jour de data (global)
         contraintes_repartition = {}
         for e in self.enseignants_liste:
             if e in self.vars:
@@ -1063,11 +1120,11 @@ class FenetreContraintes:
                 else:
                     contraintes_repartition[e] = None
         
-        from moteur.calcul import data
         for e in self.enseignants_liste:
             if e in data and contraintes_repartition.get(e) is not None:
                 data[e]["contrainte_repartition"] = contraintes_repartition[e]
         
+        # Parcours des enseignants pour construire les contraintes
         for e in self.enseignants_liste:
             if e not in self.vars:
                 continue
@@ -1116,7 +1173,12 @@ class FenetreContraintes:
         self.statusbar.config(text="⏳ Recherche en cours...")
         
         try:
-            solutions = rechercher_solutions(contraintes, niveaux_souhaites, nb_niveaux_max)
+            solutions = rechercher_solutions(
+                contraintes,
+                niveaux_souhaites,
+                nb_niveaux_max,
+                enseignants_liste=self.enseignants_liste
+            )
         except Exception as e:
             self.parent.config(cursor="")
             messagebox.showerror("Erreur", f"Erreur lors de la recherche : {str(e)}")
@@ -1133,12 +1195,12 @@ class FenetreContraintes:
         
         if solutions:
             self.statusbar.config(text=f"✅ {len(solutions)} solution(s) trouvée(s)")
-            messagebox.showinfo("Recherche terminée", 
+            messagebox.showinfo("Recherche terminée",
                 f"{len(solutions)} solution(s) trouvée(s) !\n\n"
                 f"Cliquez sur 'Voir les résultats' dans la fenêtre principale.")
             self.parent.destroy()
         else:
             self.statusbar.config(text="❌ Aucune solution trouvée")
-            messagebox.showwarning("Recherche terminée", 
+            messagebox.showwarning("Recherche terminée",
                 "Aucune solution trouvée.\n"
                 "Vérifiez vos contraintes ou assouplissez-les.")
