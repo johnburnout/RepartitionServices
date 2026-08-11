@@ -37,11 +37,11 @@ tmp/
 # Fichiers de build PyInstaller
 dist/
 build/
-*.spec           # fichiers .spec générés par PyInstaller
+#*.spec           # fichiers .spec générés par PyInstaller
 *.egg-info/
 
 # Dossiers de préparation des images disque (DMG / ISO)
-RepartitionService_dmg/
+RepartitionServices_dmg/
 RepartitionServices_iso/
 
 # Fichiers images de distribution
@@ -51,4 +51,4 @@ RepartitionServices_iso/
 *.tar.gz
 
 # Fichiers de configuration de version (s'il est généré automatiquement)
-version.plist    # si vous le générez à chaque build, sinon gardez-le
+#version.plist    # si vous le générez à chaque build, sinon gardez-le

@@ -72,9 +72,12 @@ def verifier_horaire(nom, grp):
         return total == base
     return base <= total <= base + sup
 
-def solution_to_tuple(sol):
+def solution_to_tuple(sol, enseignants_liste=None):
+    """Convertit une solution en tuple trié pour le cache."""
+    if enseignants_liste is None:
+        enseignants_liste = enseignants  # fallback global
     items = []
-    for e in enseignants:
+    for e in enseignants_liste:
         d = sol.get(e, {})
         valeurs = [e] + [d.get(n, 0) for n in niveaux]
         items.append(tuple(valeurs))
@@ -261,20 +264,23 @@ def generer_combinaisons_enseignant(nom, nb_groupes_total, contraintes_utilisate
 # Cache pour les résultats de get_nb_groupes_possibles
 _cache_nb_groupes = {}
 
-def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max):
+def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max, enseignants_liste=None):
     """Recherche toutes les solutions possibles (optimisée)."""
+    if enseignants_liste is None:
+        enseignants_liste = enseignants  # fallback global
+        
     solutions_set = set()
     
     # Calculer les nombres de groupes possibles pour chaque enseignant (avec cache)
     nb_groupes_par_enseignant = {}
-    for e in enseignants:
+    for e in enseignants_liste:
         if e not in _cache_nb_groupes:
             _cache_nb_groupes[e] = get_nb_groupes_possibles(e)
         nb_groupes_par_enseignant[e] = _cache_nb_groupes[e]
-    
+        
     # Ordonner les enseignants par nombre de combinaisons possibles (le plus petit d'abord)
     total_combos = {}
-    for e in enseignants:
+    for e in enseignants_liste:
         nb_g = nb_groupes_par_enseignant[e]
         total = 0
         for nbg in nb_g:
@@ -294,14 +300,14 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
                 prod *= (min(nbg, max_val) + 1)
             total += prod
         total_combos[e] = total
-    
-    ordre_enseignants = sorted(enseignants, key=lambda e: total_combos.get(e, float('inf')))
+        
+    ordre_enseignants = sorted(enseignants_liste, key=lambda e: total_combos.get(e, float('inf')))
     
     # Fonction récursive avec élagage
     def explorer(index, current_solution, totaux_courants):
         if index == len(ordre_enseignants):
             if all(totaux_courants[n] == effectifs[n] for n in niveaux):
-                solutions_set.add(solution_to_tuple(current_solution))
+                solutions_set.add(solution_to_tuple(current_solution, enseignants_liste))
             return
         
         e = ordre_enseignants[index]
@@ -324,11 +330,11 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
                 nouveau_totaux = totaux_courants.copy()
                 for n in niveaux:
                     nouveau_totaux[n] += d.get(n, 0)
-                
+                    
                 current_solution[e] = d
                 explorer(index + 1, current_solution, nouveau_totaux)
                 del current_solution[e]
-    
+                
     explorer(0, {}, {n: 0 for n in niveaux})
     
     solutions = []
@@ -339,5 +345,5 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
             valeurs = item[1:]
             sol[e] = {n: valeurs[i] for i, n in enumerate(niveaux)}
         solutions.append(sol)
-    
+        
     return solutions

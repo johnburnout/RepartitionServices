@@ -49,11 +49,11 @@ class FenetrePrincipale:
         """Met à jour le titre de la fenêtre."""
         titre = "Répartition des services"
         if self.etablissement and self.matiere:
-            titre = f"{self.etablissement} - {self.matiere} - v2.0"
+            titre = f"{self.etablissement} - {self.matiere} - v2.1"
         elif self.etablissement:
-            titre = f"{self.etablissement} - v2.0"
+            titre = f"{self.etablissement} - v2.1"
         elif self.matiere:
-            titre = f"{self.matiere} - v2.0"
+            titre = f"{self.matiere} - v2.1"
         self.parent.title(titre)
     
     def configurer_styles(self):
@@ -289,7 +289,7 @@ class FenetrePrincipale:
     def a_propos(self):
         """Affiche la boîte À propos."""
         messagebox.showinfo("À propos", 
-            "Répartition des services - v2.0\n\n"
+            "Répartition des services - v2.1\n\n"
             "Développé par Jean Roussie\n"
             "Collège La Boétie - Sarlat\n"
             "2026\n\n"
