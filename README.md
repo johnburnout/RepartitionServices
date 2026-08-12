@@ -6,7 +6,3 @@ Logiciel de [calcul des répartitions de services](https://maths.roussie.net/cal
 
 ## Mode d'emploi
 A venir
-
-## Executables
-- [Macos](https://maths.roussie.net/wp-content/uploads/fichiers-cours/Atelier_Informatique/Programmes/RepartitionService/RepartitionService.dmg)
-- [Windows](https://maths.roussie.net/wp-content/uploads/fichiers-cours/Atelier_Informatique/Programmes/RepartitionService/RepartitionServices.iso)
