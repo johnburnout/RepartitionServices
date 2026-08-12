@@ -41,7 +41,7 @@ jobs:
           main.py
     
     - name: Upload Windows artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: RepartitionServices-Windows
         path: dist/RepartitionServices.exe
@@ -85,7 +85,7 @@ jobs:
           "dist/RepartitionServices.dmg"
     
     - name: Upload macOS artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: RepartitionServices-macOS
         path: dist/RepartitionServices.dmg
