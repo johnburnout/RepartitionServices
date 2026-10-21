@@ -135,7 +135,7 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 
 | Bouton / menu | Action |
 |---|---|
-| 💾 **Sauvegarder** / *Fichier › Enregistrer les préférences* | Enregistre toute la saisie dans le fichier de préférences courant (demande un nom s'il n'y en a pas) |
+| 💾 **Sauvegarder** / *Fichier › Enregistrer les préférences* | Enregistre toute la saisie dans le fichier de préférences courant (demande un nom s'il n'y en a pas, ou si le fichier courant est le fichier d'exemple `preferences_defaut.json`) |
 | *Fichier › Enregistrer sous…* | Enregistre dans un nouveau fichier `.json` |
 | 📂 **Charger** / *Fichier › Ouvrir les préférences…* | Recharge un fichier de préférences |
 | 🔄 **Réinitialiser** | Remet toutes les saisies à zéro (HP = 18, HSA = 0, champs vides) après confirmation |
@@ -187,7 +187,9 @@ Toute la saisie (établissement, matière, niveaux, enseignants et contraintes) 
 
 Le premier fichier trouvé est chargé. Si aucun n'est trouvé, une structure par défaut de collège est proposée (6e : 5,5 h × 8 groupes ; 5e : 4 h × 8 ; 4e : 4 h × 7 ; 3e : 4 h × 7), sans enseignant.
 
-> Astuce : enregistrez votre configuration habituelle sous le nom `preferences_defaut.json` dans votre dossier personnel pour la retrouver à chaque lancement.
+Le fichier `preferences_defaut.json` livré avec le logiciel est un **exemple** : « Sauvegarder » ne l'écrase jamais et propose d'enregistrer sous un autre nom.
+
+> Astuce : enregistrez votre configuration habituelle sous le nom `preferences.json` dans votre dossier personnel pour la retrouver à chaque lancement.
 
 ---
 

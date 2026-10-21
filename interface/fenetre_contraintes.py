@@ -8,6 +8,10 @@ import os
 from moteur.calcul import charger_donnees
 
 
+# Fichier d'exemple livré avec le logiciel : jamais écrasé par « Sauvegarder »
+FICHIER_EXEMPLE = "preferences_defaut.json"
+
+
 def _float(texte, defaut=None):
     """Convertit une saisie ("18", "2,5", "9.0 ⚠️") en float, ou `defaut`."""
     texte = str(texte).replace("⚠️", "").replace(",", ".").strip()
@@ -416,13 +420,15 @@ class FenetreContraintes:
         chemin = filedialog.asksaveasfilename(
             title="Enregistrer les préférences sous...",
             filetypes=[("Fichiers JSON", "*.json"), ("Tous les fichiers", "*.*")],
-            defaultextension=".json"
+            defaultextension=".json",
+            initialfile="preferences.json"
         )
         if chemin:
             self.fichier_preferences = chemin
             self.parent_principal.fichier_preferences = chemin
             self.mettre_a_jour_label_fichier()
-            self.sauvegarder_preferences()
+            # Choix explicite de l'utilisateur : autorisé même pour le fichier d'exemple
+            self.sauvegarder_preferences(confirme=True)
     
     def a_propos(self):
         messagebox.showinfo("À propos", 
@@ -1056,14 +1062,21 @@ class FenetreContraintes:
             except ValueError:
                 pass
     
-    def sauvegarder_preferences(self):
+    def sauvegarder_preferences(self, confirme=False):
         if not self.compatible_globale:
             messagebox.showerror("Erreur", 
                 "Impossible de sauvegarder : le total des heures des niveaux n'est pas compatible "
                 "avec le total HP+HSA des enseignants.")
             return
         
-        if self.fichier_preferences is None:
+        est_exemple = (self.fichier_preferences is not None and
+                       os.path.basename(self.fichier_preferences) == FICHIER_EXEMPLE)
+        if self.fichier_preferences is None or (est_exemple and not confirme):
+            if est_exemple:
+                messagebox.showinfo(
+                    "Fichier d'exemple",
+                    "Le fichier d'exemple ne peut pas être modifié par « Sauvegarder ».\n"
+                    "Choisissez un nom pour enregistrer vos préférences.")
             self.sauvegarder_sous()
             return
         
