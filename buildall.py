@@ -63,24 +63,8 @@ def build_macos():
     """Build l'application macOS"""
     print("\n🍎 Build macOS...")
     
-    cmd = [
-        'pyinstaller', '--clean', '--windowed',
-        '--name', 'RepartitionServices',
-        '--add-data', 'moteur:moteur',
-        '--add-data', 'interface:interface',
-        '--add-data', 'export:export',
-        '--hidden-import', 'tkinter',
-        '--hidden-import', 'tkinter.ttk',
-        '--hidden-import', 'csv',
-        '--hidden-import', 'datetime',
-        '--osx-bundle-identifier', 'com.votreorganisation.repartitionservices',
-        'main.py'
-    ]
-    
-    # Ajouter l'icône si elle existe
-    if os.path.exists('assets/icon.icns'):
-        cmd.insert(cmd.index('--name') + 2, '--icon')
-        cmd.insert(cmd.index('--icon') + 1, 'assets/icon.icns')
+    # Toute la configuration (mode dossier, icône, version) est dans le .spec
+    cmd = ['pyinstaller', '--clean', '--noconfirm', 'RepartitionServices.spec']
     
     try:
         subprocess.run(cmd, check=True)
