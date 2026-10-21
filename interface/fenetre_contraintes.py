@@ -5,10 +5,18 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 import json
 import os
-from moteur.calcul import (
-    max_par_enseignant, charger_donnees, data, total_heures,
-    enseignants, niveaux, niveaux_data, nb_niveaux_max_effectif
-)
+from moteur.calcul import charger_donnees
+
+
+def _float(texte, defaut=None):
+    """Convertit une saisie ("18", "2,5", "9.0 ⚠️") en float, ou `defaut`."""
+    texte = str(texte).replace("⚠️", "").replace(",", ".").strip()
+    if not texte:
+        return defaut
+    try:
+        return float(texte)
+    except ValueError:
+        return defaut
 
 class FenetreContraintes:
     def __init__(self, parent, parent_principal):
@@ -256,48 +264,101 @@ class FenetreContraintes:
         self.charger_valeurs_depuis_moteur()
     
     def fermer_fenetre(self):
-        """Ferme la fenêtre après avoir synchronisé les données."""
-        self.synchroniser_data_avec_interface()
-        # Rafraîchir la fenêtre principale
-        self.parent_principal.mettre_a_jour_donnees()
-        self.parent_principal.mettre_a_jour_affichage()
+        """Ferme la fenêtre après avoir transmis la saisie au moteur."""
+        self.appliquer_au_moteur()
         self.parent.destroy()
     
-    def synchroniser_data_avec_interface(self):
-        """Met à jour les données globales data avec les valeurs HP/HSA/Blocs de l'interface."""
-        from moteur.calcul import data
+    def lire_saisie(self):
+        """Photographie des valeurs saisies dans le tableau (pour les conserver)."""
+        saisie = {}
+        for e, v in self.vars.items():
+            saisie[e] = {
+                "hp": v["hp"].get(), "hsa": v["hsa"].get(),
+                "bloc1": v["bloc1"].get(), "bloc2": v["bloc2"].get(),
+                "nb_niveaux_max": v["nb_niveaux_max"].get(),
+                "niveau_souhait": v["niveau_souhait"].get(),
+                "niveaux": {n: (v[n]["max"].get(), v[n]["fixe"].get())
+                            for n in self.niveaux_liste if n in v},
+            }
+        return saisie
+
+    def appliquer_saisie(self, saisie, renommage=None):
+        """Remet dans le tableau des valeurs issues de lire_saisie()."""
+        renommage = renommage or {}
+        for e, val in saisie.items():
+            if e not in self.vars:
+                continue
+            v = self.vars[e]
+            for cle in ("hp", "hsa", "bloc1", "bloc2", "nb_niveaux_max"):
+                v[cle].set(val[cle])
+            souhait = renommage.get(val["niveau_souhait"], val["niveau_souhait"])
+            v["niveau_souhait"].set(souhait if souhait in self.niveaux_liste else "")
+            for n, (max_val, fixe) in val["niveaux"].items():
+                n = renommage.get(n, n)
+                if n in v:
+                    v[n]["max"].set(max_val)
+                    v[n]["fixe"].set(fixe)
+
+    def construire_preferences(self):
+        """Construit le dictionnaire de préférences à partir de la saisie."""
+        prefs = {
+            "enseignants": {},
+            "niveaux": [d.copy() for d in self.niveaux_data_liste],
+            "nb_niveaux_max_global": self.nb_niveaux_max_effectif,
+            "version": "2.0",
+            "enseignants_liste": list(self.enseignants_liste),
+            "etablissement": self.var_etablissement.get().strip(),
+            "matiere": self.var_matiere.get().strip()
+        }
         for e in self.enseignants_liste:
             if e not in self.vars:
                 continue
-            # HP / HSA
-            hp_str = self.vars[e]["hp"].get().strip()
-            hsa_str = self.vars[e]["hsa"].get().strip()
-            if hp_str and hsa_str:
-                try:
-                    hp = float(hp_str.replace(",", "."))
-                    hsa = float(hsa_str.replace(",", "."))
-                    if e in data:
-                        data[e]["horaire"] = (hp, hsa)
-                    else:
-                        data[e] = {
-                            "nom": e,
-                            "horaire": (hp, hsa),
-                            "contrainte_repartition": None
-                        }
-                except ValueError:
-                    pass
-            # Blocs
-            bloc1_str = self.vars[e]["bloc1"].get().strip()
-            bloc2_str = self.vars[e]["bloc2"].get().strip()
-            if bloc1_str and bloc2_str:
-                try:
-                    bloc1 = float(bloc1_str.replace(",", "."))
-                    bloc2 = float(bloc2_str.replace(",", "."))
-                    if e in data:
-                        data[e]["contrainte_repartition"] = (bloc1, bloc2)
-                except ValueError:
-                    pass
-    
+            v = self.vars[e]
+            bloc1 = _float(v["bloc1"].get())
+            bloc2 = _float(v["bloc2"].get())
+            contrainte_repartition = [bloc1, bloc2] if bloc1 is not None and bloc2 is not None else None
+            prefs["enseignants"][e] = {
+                "hp": v["hp"].get().strip(),
+                "hsa": v["hsa"].get().strip(),
+                "bloc1": v["bloc1"].get().replace("⚠️", "").strip(),
+                "bloc2": v["bloc2"].get().replace("⚠️", "").strip(),
+                "contrainte_repartition": contrainte_repartition,
+                "niveaux": {
+                    n: {"max": v[n]["max"].get().strip(), "fixe": v[n]["fixe"].get()}
+                    for n in self.niveaux_liste if n in v
+                },
+                "nb_niveaux_max": v["nb_niveaux_max"].get().strip(),
+                "niveau_souhait": v["niveau_souhait"].get().strip()
+            }
+        return prefs
+
+    def appliquer_au_moteur(self):
+        """Transmet au moteur TOUTE la saisie en cours (niveaux, enseignants,
+        horaires, blocs, nb max de niveaux) et rafraîchit la fenêtre principale.
+
+        Si la structure a changé, les solutions précédentes sont invalidées.
+        """
+        from moteur import calcul
+        def signature():
+            return (list(calcul.enseignants),
+                    [dict(d) for d in calcul.niveaux_data],
+                    [dict(d) for d in calcul.enseignants_data],
+                    calcul.nb_niveaux_max_effectif)
+        avant = signature()
+        prefs = self.construire_preferences()
+        charger_donnees(prefs)
+        apres = signature()
+
+        pp = self.parent_principal
+        pp.etablissement = prefs["etablissement"]
+        pp.matiere = prefs["matiere"]
+        if avant != apres:
+            pp.invalider_solutions()
+        pp.mettre_a_jour_donnees()
+        pp.mettre_a_jour_affichage()
+        pp.mettre_a_jour_titre()
+        return prefs
+
     def mettre_a_jour_label_fichier(self):
         if self.fichier_preferences:
             nom = os.path.basename(self.fichier_preferences)
@@ -336,7 +397,8 @@ class FenetreContraintes:
                 # Recharger les données
                 self.recharger_donnees()
                 
-                # Recréer le tableau
+                # Recréer le tableau à partir du fichier (pas de la saisie précédente)
+                self.vars = {}
                 self.creer_tableau()
                 self.parent.update_idletasks()
                 self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -364,7 +426,7 @@ class FenetreContraintes:
     
     def a_propos(self):
         messagebox.showinfo("À propos", 
-            "Saisie des contraintes - v2.1\n\n"
+            "Saisie des contraintes - v2.2\n\n"
             "Développé par Jean Roussie\n"
             "Collège La Boétie - Sarlat\n"
             "2026\n\n"
@@ -713,8 +775,11 @@ class FenetreContraintes:
                         break
                 
                 self.niveaux_dict = {d["nom"]: d for d in self.niveaux_data_liste}
+                saisie = self.lire_saisie()
                 self.mettre_a_jour_affichage_niveaux()
+                self.vars = {}
                 self.creer_tableau()
+                self.appliquer_saisie(saisie, {ancien_nom: nouveau_nom})
                 self.parent.update_idletasks()
                 self.canvas.configure(scrollregion=self.canvas.bbox("all"))
                 self.afficher_compatibilite()
@@ -766,7 +831,13 @@ class FenetreContraintes:
             self.afficher_compatibilite()
             messagebox.showinfo("Info", f"Enseignant '{nom}' supprimé")
     
-    def creer_tableau(self):
+    def creer_tableau(self, renommage=None):
+        """(Re)construit le tableau.
+
+        La saisie en cours est conservée (ajout/suppression d'enseignant ou de
+        niveau) ; `renommage` = {ancien_nom: nouveau_nom} pour un niveau renommé.
+        """
+        saisie_precedente = self.lire_saisie() if self.vars else None
         # Nettoyer le frame
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
@@ -948,8 +1019,11 @@ class FenetreContraintes:
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         self.afficher_compatibilite()
         
-        # Charger les valeurs depuis le moteur APRES la création du tableau
-        self.charger_valeurs_depuis_moteur()
+        # Remettre la saisie en cours, ou sinon les valeurs du fichier/moteur
+        if saisie_precedente:
+            self.appliquer_saisie(saisie_precedente, renommage)
+        else:
+            self.charger_valeurs_depuis_moteur()
     
     def calculer_bloc2(self, enseignant):
         hp_str = self.vars[enseignant]["hp"].get().strip()
@@ -994,60 +1068,16 @@ class FenetreContraintes:
             return
         
         try:
-            # Synchroniser les données avant de sauvegarder
-            self.synchroniser_data_avec_interface()
-            
-            prefs = {
-                "enseignants": {},
-                "niveaux": self.niveaux_data_liste,
-                "nb_niveaux_max_global": self.nb_niveaux_max_effectif,
-                "version": "2.0",
-                "enseignants_liste": self.enseignants_liste,
-                "etablissement": self.var_etablissement.get().strip(),
-                "matiere": self.var_matiere.get().strip()
-            }
-            
-            for e in self.enseignants_liste:
-                if e not in self.vars:
-                    continue
-                
-                bloc1_str = self.vars[e]["bloc1"].get().strip()
-                bloc2_str = self.vars[e]["bloc2"].get().strip()
-                contrainte_repartition = None
-                if bloc1_str and bloc2_str:
-                    try:
-                        bloc1 = float(bloc1_str.replace(",", "."))
-                        bloc2 = float(bloc2_str.replace(",", "."))
-                        contrainte_repartition = (bloc1, bloc2)
-                    except ValueError:
-                        pass
-                
-                prefs["enseignants"][e] = {
-                    "hp": self.vars[e]["hp"].get().strip(),
-                    "hsa": self.vars[e]["hsa"].get().strip(),
-                    "bloc1": self.vars[e]["bloc1"].get().strip(),
-                    "bloc2": self.vars[e]["bloc2"].get().strip(),
-                    "contrainte_repartition": contrainte_repartition,
-                    "niveaux": {},
-                    "nb_niveaux_max": self.vars[e]["nb_niveaux_max"].get().strip(),
-                    "niveau_souhait": self.vars[e]["niveau_souhait"].get().strip()
-                }
-                for n in self.niveaux_liste:
-                    if n in self.vars[e]:
-                        prefs["enseignants"][e]["niveaux"][n] = {
-                            "max": self.vars[e][n]["max"].get().strip(),
-                            "fixe": self.vars[e][n]["fixe"].get()
-                        }
-            
-            os.makedirs(os.path.dirname(self.fichier_preferences), exist_ok=True)
+            prefs = self.appliquer_au_moteur()
+
+            dossier = os.path.dirname(self.fichier_preferences)
+            if dossier:
+                os.makedirs(dossier, exist_ok=True)
             
             with open(self.fichier_preferences, 'w', encoding='utf-8') as f:
                 json.dump(prefs, f, indent=4, ensure_ascii=False)
             
-            # Mettre à jour la fenêtre principale
             self.parent_principal.fichier_preferences = self.fichier_preferences
-            self.parent_principal.mettre_a_jour_donnees()
-            self.parent_principal.mettre_a_jour_affichage()
             
             self.statusbar.config(text=f"✅ Préférences sauvegardées dans {os.path.basename(self.fichier_preferences)}")
             self.mettre_a_jour_label_fichier()
@@ -1080,7 +1110,7 @@ class FenetreContraintes:
         self.statusbar.config(text="🔄 Réinitialisé")
     
     def lancer_recherche(self):
-        from moteur.calcul import rechercher_solutions, data
+        from moteur.calcul import rechercher_solutions
         
         self.parent_principal.etablissement = self.var_etablissement.get().strip()
         self.parent_principal.matiere = self.var_matiere.get().strip()
@@ -1096,34 +1126,14 @@ class FenetreContraintes:
               f"Total max : {self.calculer_total_hp_enseignants()[0] + self.calculer_total_hp_enseignants()[1]:.1f}h")
             return
         
-        # Synchroniser les données avant la recherche
-        self.synchroniser_data_avec_interface()
-        
-        # Récupération des contraintes
+        # Transmettre au moteur la structure et les horaires saisis
+        # (niveaux/enseignants ajoutés, modifiés ou supprimés compris)
+        self.appliquer_au_moteur()
+
         contraintes = {}
         niveaux_souhaites = {}
         nb_niveaux_max = {}
-        
-        # Contraintes de répartition (blocs) – mise à jour de data (global)
-        contraintes_repartition = {}
-        for e in self.enseignants_liste:
-            if e in self.vars:
-                bloc1_str = self.vars[e]["bloc1"].get().strip()
-                bloc2_str = self.vars[e]["bloc2"].get().strip()
-                if bloc1_str and bloc2_str:
-                    try:
-                        bloc1 = float(bloc1_str.replace(",", "."))
-                        bloc2 = float(bloc2_str.replace(",", "."))
-                        contraintes_repartition[e] = (bloc1, bloc2)
-                    except ValueError:
-                        contraintes_repartition[e] = None
-                else:
-                    contraintes_repartition[e] = None
-        
-        for e in self.enseignants_liste:
-            if e in data and contraintes_repartition.get(e) is not None:
-                data[e]["contrainte_repartition"] = contraintes_repartition[e]
-        
+
         # Parcours des enseignants pour construire les contraintes
         for e in self.enseignants_liste:
             if e not in self.vars:
@@ -1155,7 +1165,7 @@ class FenetreContraintes:
                 nb_max_str = self.vars[e]["nb_niveaux_max"].get().strip()
                 if nb_max_str:
                     nb_max = int(nb_max_str)
-                    if 2 <= nb_max <= self.nb_niveaux_max_effectif:
+                    if 1 <= nb_max <= self.nb_niveaux_max_effectif:
                         nb_niveaux_max[e] = nb_max
                     else:
                         nb_niveaux_max[e] = self.nb_niveaux_max_effectif

@@ -8,5 +8,5 @@ from .calcul import (
     data, total_heures, nb_niveaux_utilises, verifier_horaire,
     solution_to_tuple, verifier_contrainte_blocs_rapide,
     get_nb_groupes_possibles, generer_combinaisons_enseignant,
-    rechercher_solutions, charger_donnees
+    combinaisons_valides, rechercher_solutions, charger_donnees
 )

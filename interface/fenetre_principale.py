@@ -49,11 +49,11 @@ class FenetrePrincipale:
         """Met à jour le titre de la fenêtre."""
         titre = "Répartition des services"
         if self.etablissement and self.matiere:
-            titre = f"{self.etablissement} - {self.matiere} - v2.1"
+            titre = f"{self.etablissement} - {self.matiere} - v2.2"
         elif self.etablissement:
-            titre = f"{self.etablissement} - v2.1"
+            titre = f"{self.etablissement} - v2.2"
         elif self.matiere:
-            titre = f"{self.matiere} - v2.1"
+            titre = f"{self.matiere} - v2.2"
         self.parent.title(titre)
     
     def configurer_styles(self):
@@ -289,12 +289,19 @@ class FenetrePrincipale:
     def a_propos(self):
         """Affiche la boîte À propos."""
         messagebox.showinfo("À propos", 
-            "Répartition des services - v2.1\n\n"
+            "Répartition des services - v2.2\n\n"
             "Développé par Jean Roussie\n"
             "Collège La Boétie - Sarlat\n"
             "2026\n\n"
             "Langage : Python 3 / Tkinter")
     
+    def invalider_solutions(self):
+        """Les données ont changé : les solutions précédentes ne sont plus valables."""
+        if self.solutions:
+            self.solutions = []
+            self.btn_resultats.config(state=tk.DISABLED)
+            self.statusbar.config(text="ℹ️ Données modifiées : relancez la recherche")
+
     def set_solutions(self, solutions, contraintes, niveaux_souhaites, nb_niveaux_max, etablissement=None, matiere=None):
         """Met à jour les solutions après la recherche."""
         self.solutions = solutions
