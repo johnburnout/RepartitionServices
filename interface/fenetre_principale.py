@@ -201,7 +201,7 @@ class FenetrePrincipale:
                 try:
                     with open(chemin, 'r', encoding='utf-8') as f:
                         prefs = json.load(f)
-                    charger_donnees(prefs)
+                    avertissements = charger_donnees(prefs)
                     self.mettre_a_jour_donnees()
                     if "etablissement" in prefs:
                         self.etablissement = prefs["etablissement"]
@@ -211,6 +211,7 @@ class FenetrePrincipale:
                     self.mettre_a_jour_affichage()
                     self.fichier_preferences = chemin
                     self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
+                    self.signaler_avertissements(chemin, avertissements)
                     return
                 except Exception as e:
                     self.statusbar.config(text=f"⚠️ Erreur de chargement : {str(e)}")
@@ -261,7 +262,7 @@ class FenetrePrincipale:
         try:
             with open(chemin, 'r', encoding='utf-8') as f:
                 prefs = json.load(f)
-            charger_donnees(prefs)
+            avertissements = charger_donnees(prefs)
             self.mettre_a_jour_donnees()
             if "etablissement" in prefs:
                 self.etablissement = prefs["etablissement"]
@@ -280,6 +281,21 @@ class FenetrePrincipale:
         fenetre = self.fenetre_contraintes_ouverte()
         if fenetre:
             fenetre.afficher_preferences(chemin, prefs)
+        self.signaler_avertissements(chemin, avertissements)
+
+    def signaler_avertissements(self, chemin, avertissements):
+        """Valeurs du fichier illisibles ou absentes, remplacées au chargement."""
+        if not avertissements:
+            return
+        lignes = avertissements[:15]
+        if len(avertissements) > 15:
+            lignes.append(f"… et {len(avertissements) - 15} autre(s)")
+        self.statusbar.config(text=f"⚠️ Préférences chargées avec {len(avertissements)} correction(s) : "
+                                   f"{os.path.basename(chemin)}")
+        messagebox.showwarning("Préférences corrigées",
+            f"Certaines valeurs de {os.path.basename(chemin)} étaient illisibles ou absentes "
+            "et ont été remplacées :\n\n" + "\n".join("• " + l for l in lignes) +
+            "\n\nVérifiez-les dans la fenêtre des contraintes.")
 
     def fenetre_contraintes_ouverte(self):
         """Fenêtre des contraintes actuellement ouverte, ou None."""

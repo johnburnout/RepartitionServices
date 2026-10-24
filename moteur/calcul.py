@@ -24,53 +24,135 @@ NB_NIVEAUX_MAX_STRUCTURE = 3
 # Tolérance sur les heures (sommes de décimaux non exactes en flottants)
 _EPS = 0.01
 
-def _nombre(valeur, defaut):
-    """Convertit une saisie ("18", "2,5", "", None) en float."""
-    if valeur is None:
-        return float(defaut)
+def _nombre(valeur, defaut=None):
+    """Convertit une saisie ("18", "2,5", "", None) en float, ou `defaut`."""
+    if isinstance(valeur, bool):
+        return defaut
     if isinstance(valeur, (int, float)):
         return float(valeur)
+    if valeur is None:
+        return defaut
     texte = str(valeur).replace("⚠️", "").replace(",", ".").strip()
     if not texte:
-        return float(defaut)
+        return defaut
     try:
         return float(texte)
     except ValueError:
-        return float(defaut)
+        return defaut
+
+
+def _vide(valeur):
+    return valeur is None or str(valeur).strip() == ""
+
+
+def _entier(valeur, defaut, minimum, description):
+    """Entier >= minimum ; `defaut` si absent ; ValueError si illisible."""
+    if _vide(valeur):
+        return defaut
+    x = _nombre(valeur)
+    if x is None or x != int(x) or x < minimum:
+        raise ValueError(f"{description} : « {valeur} » n'est pas un entier >= {minimum}")
+    return int(x)
+
 
 def charger_donnees(preferences):
-    """Charge les données depuis un fichier de préférences."""
+    """Charge les données depuis un dictionnaire de préférences.
+
+    Le chargement est complet (rien n'est conservé du chargement précédent) et
+    tout ou rien : en cas d'erreur (ValueError), les données sont inchangées.
+    Retourne la liste des avertissements : valeurs illisibles ou absentes
+    remplacées par une valeur par défaut.
+    """
     global niveaux, niveaux_data, effectifs, horaire_volume, max_par_enseignant
     global enseignants, enseignants_data, data, nb_total_niveaux, nb_niveaux_max_effectif
-    
-    if "niveaux" in preferences:
-        niveaux_data = preferences["niveaux"]
-        niveaux = [d["nom"] for d in niveaux_data]
-        effectifs = {d["nom"]: d["groupes"] for d in niveaux_data}
-        horaire_volume = {d["nom"]: d["heures"] for d in niveaux_data}
-        max_par_enseignant = {d["nom"]: d["max_par_enseignant"] for d in niveaux_data}
-        nb_total_niveaux = len(niveaux)
-    
-    if "nb_niveaux_max_global" in preferences:
-        nb_niveaux_max_effectif = preferences["nb_niveaux_max_global"]
-    
-    if "enseignants_liste" in preferences:
-        enseignants = preferences["enseignants_liste"]
-        enseignants_data = []
-        for e in enseignants:
-            if e in preferences["enseignants"]:
-                ens = preferences["enseignants"][e]
-                hp = _nombre(ens.get("hp"), 18)
-                hsa = _nombre(ens.get("hsa"), 0)
-                contrainte_repartition = ens.get("contrainte_repartition", None)
-                if contrainte_repartition is not None:
-                    contrainte_repartition = tuple(float(b) for b in contrainte_repartition)
-                enseignants_data.append({
-                    "nom": e,
-                    "horaire": (hp, hsa),
-                    "contrainte_repartition": contrainte_repartition
-                })
-        data = {d["nom"]: d for d in enseignants_data}
+
+    if not isinstance(preferences, dict):
+        raise ValueError("le fichier ne contient pas des préférences valides")
+    avertissements = []
+
+    # --- Niveaux
+    nv_niveaux_data = []
+    for i, d in enumerate(preferences.get("niveaux") or [], 1):
+        if not isinstance(d, dict) or _vide(d.get("nom")):
+            raise ValueError(f"niveau n°{i} sans nom")
+        nom = str(d["nom"]).strip()
+        if any(x["nom"] == nom for x in nv_niveaux_data):
+            raise ValueError(f"niveau « {nom} » défini deux fois")
+        heures = _nombre(d.get("heures"))
+        if heures is None or heures <= 0:
+            raise ValueError(f"niveau « {nom} » : heures « {d.get('heures')} » invalides")
+        nv_niveaux_data.append({
+            "nom": nom,
+            "heures": heures,
+            "groupes": _entier(d.get("groupes"), 0, 0, f"niveau « {nom} », groupes"),
+            "max_par_enseignant": _entier(d.get("max_par_enseignant"), 3, 1,
+                                          f"niveau « {nom} », max par enseignant"),
+        })
+
+    nb_max = preferences.get("nb_niveaux_max_global")
+    try:
+        nv_nb_max = _entier(nb_max, 3, 1, "nb max de niveaux")
+    except ValueError:
+        avertissements.append(f"Nb max de niveaux « {nb_max} » illisible : 3 utilisé")
+        nv_nb_max = 3
+
+    # --- Enseignants
+    ens_dict = preferences.get("enseignants")
+    if ens_dict is None:
+        ens_dict = {}
+    if not isinstance(ens_dict, dict):
+        raise ValueError("la rubrique « enseignants » est invalide")
+    liste = preferences.get("enseignants_liste")
+    if liste is None:
+        liste = list(ens_dict)
+    nv_enseignants = []
+    for e in liste:
+        if e not in nv_enseignants:
+            nv_enseignants.append(e)
+
+    nv_enseignants_data = []
+    for e in nv_enseignants:
+        ens = ens_dict.get(e)
+        if not isinstance(ens, dict):
+            avertissements.append(f"{e} : horaire absent du fichier, 18 h (sans HSA) utilisées")
+            ens = {}
+        hp = _nombre(ens.get("hp"))
+        if hp is None or hp <= 0:
+            if ens:
+                avertissements.append(f"{e} : HP « {ens.get('hp', '')} » illisible, 18 h utilisées")
+            hp = 18.0
+        hsa = _nombre(ens.get("hsa"))
+        if hsa is None or hsa < 0:
+            if not _vide(ens.get("hsa")):
+                avertissements.append(f"{e} : HSA « {ens.get('hsa')} » illisible, 0 h utilisée")
+            hsa = 0.0
+        blocs = ens.get("contrainte_repartition")
+        if blocs is not None:
+            try:
+                blocs = tuple(float(b) for b in blocs)
+                if len(blocs) != 2 or min(blocs) <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                avertissements.append(f"{e} : blocs « {ens.get('contrainte_repartition')} » illisibles, ignorés")
+                blocs = None
+        nv_enseignants_data.append({
+            "nom": e,
+            "horaire": (hp, hsa),
+            "contrainte_repartition": blocs
+        })
+
+    # --- Tout est valide : remplacement des données
+    niveaux_data = nv_niveaux_data
+    niveaux = [d["nom"] for d in niveaux_data]
+    effectifs = {d["nom"]: d["groupes"] for d in niveaux_data}
+    horaire_volume = {d["nom"]: d["heures"] for d in niveaux_data}
+    max_par_enseignant = {d["nom"]: d["max_par_enseignant"] for d in niveaux_data}
+    nb_total_niveaux = len(niveaux)
+    nb_niveaux_max_effectif = nv_nb_max
+    enseignants = nv_enseignants
+    enseignants_data = nv_enseignants_data
+    data = {d["nom"]: d for d in enseignants_data}
+    return avertissements
 
 # ============================================================
 # FONCTIONS UTILITAIRES

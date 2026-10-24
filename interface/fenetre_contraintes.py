@@ -28,6 +28,14 @@ def _float(texte, defaut=None):
     except ValueError:
         return defaut
 
+
+def _entier(texte, minimum=0):
+    """Convertit une saisie ("3", "3.0") en entier >= minimum, ou None."""
+    x = _float(texte)
+    if x is None or x != int(x) or x < minimum:
+        return None
+    return int(x)
+
 class FenetreContraintes:
     def __init__(self, parent, parent_principal):
         self.parent = parent
@@ -314,7 +322,7 @@ class FenetreContraintes:
         prefs = {
             "enseignants": {},
             "niveaux": [d.copy() for d in self.niveaux_data_liste],
-            "nb_niveaux_max_global": self.nb_niveaux_max_effectif,
+            "nb_niveaux_max_global": self.lire_nb_max_global(),
             "version": "2.0",
             "enseignants_liste": list(self.enseignants_liste),
             "etablissement": self.var_etablissement.get().strip(),
@@ -341,6 +349,47 @@ class FenetreContraintes:
                 "niveau_souhait": v["niveau_souhait"].get().strip()
             }
         return prefs
+
+    def lire_nb_max_global(self):
+        """Valeur saisie dans « Nb max de niveaux » (même sans « Appliquer »),
+        ou la dernière valeur valide si la saisie est illisible."""
+        nb = _entier(self.var_nb_max_niveaux.get(), minimum=1)
+        if nb is not None:
+            self.nb_niveaux_max_effectif = nb
+        return self.nb_niveaux_max_effectif
+
+    def valider_saisie(self):
+        """Erreurs de saisie qui empêchent la recherche (liste de messages)."""
+        erreurs = []
+        texte = self.var_nb_max_niveaux.get().strip()
+        if _entier(texte, minimum=1) is None:
+            erreurs.append(f"Nb max de niveaux par enseignant : « {texte} » n'est pas un entier >= 1")
+        for e in self.enseignants_liste:
+            if e not in self.vars:
+                continue
+            v = self.vars[e]
+            hp = v["hp"].get().strip()
+            if (_float(hp) or 0) <= 0:
+                erreurs.append(f"{e} : HP « {hp} » invalide (nombre d'heures > 0)")
+            hsa = v["hsa"].get().strip()
+            if hsa and (_float(hsa) is None or _float(hsa) < 0):
+                erreurs.append(f"{e} : HSA « {hsa} » invalide (nombre d'heures >= 0, ou vide)")
+            b1 = v["bloc1"].get().replace("⚠️", "").strip()
+            b2 = v["bloc2"].get().replace("⚠️", "").strip()
+            if (b1 or b2) and ((_float(b1) or 0) <= 0 or (_float(b2) or 0) <= 0):
+                erreurs.append(f"{e} : blocs « {b1} » et « {b2} » invalides (remplir les deux, ou aucun)")
+            for n in self.niveaux_liste:
+                if n not in v:
+                    continue
+                m = v[n]["max"].get().strip()
+                if m and _entier(m) is None:
+                    erreurs.append(f"{e} – {n} : « {m} » n'est pas un nombre de groupes (entier >= 0)")
+                elif not m and v[n]["fixe"].get():
+                    erreurs.append(f"{e} – {n} : « Fixe » est coché sans nombre de groupes")
+            nb = v["nb_niveaux_max"].get().strip()
+            if nb and _entier(nb, minimum=1) is None:
+                erreurs.append(f"{e} : nb niveaux max « {nb} » n'est pas un entier >= 1")
+        return erreurs
 
     def appliquer_au_moteur(self):
         """Transmet au moteur TOUTE la saisie en cours (niveaux, enseignants,
@@ -1115,6 +1164,17 @@ class FenetreContraintes:
         self.parent_principal.matiere = self.var_matiere.get().strip()
         self.parent_principal.mettre_a_jour_titre()
         
+        erreurs = self.valider_saisie()
+        if erreurs:
+            lignes = erreurs[:15]
+            if len(erreurs) > 15:
+                lignes.append(f"… et {len(erreurs) - 15} autre(s)")
+            self.statusbar.config(text=f"❌ {len(erreurs)} erreur(s) de saisie")
+            messagebox.showerror("Saisie à corriger",
+                "La recherche ne peut pas être lancée :\n\n" + "\n".join("• " + l for l in lignes))
+            return
+        self.lire_nb_max_global()
+
         if not self.compatible_globale:
             messagebox.showerror("Erreur",
               "Impossible de lancer la recherche : le total des heures des niveaux n'est pas compatible "
@@ -1144,34 +1204,19 @@ class FenetreContraintes:
                 max_val = self.vars[e][n]["max"].get().strip()
                 fixe = self.vars[e][n]["fixe"].get()
                 
+                # Saisie déjà contrôlée par valider_saisie()
                 if max_val:
-                    try:
-                        max_int = int(max_val)
-                        if max_int < 0:
-                            messagebox.showerror("Erreur", f"Pour {e} - {n} : max doit être >= 0")
-                            return
-                        contraintes[e][n] = {"max": max_int, "exact": max_int if fixe else None}
-                    except ValueError:
-                        messagebox.showerror("Erreur", f"Pour {e} - {n} : veuillez entrer un nombre valide.")
-                        return
+                    max_int = _entier(max_val)
+                    contraintes[e][n] = {"max": max_int, "exact": max_int if fixe else None}
                 else:
                     contraintes[e][n] = {"max": None, "exact": None}
             
             souhait = self.vars[e]["niveau_souhait"].get().strip()
             niveaux_souhaites[e] = souhait if souhait else None
             
-            try:
-                nb_max_str = self.vars[e]["nb_niveaux_max"].get().strip()
-                if nb_max_str:
-                    nb_max = int(nb_max_str)
-                    if 1 <= nb_max <= self.nb_niveaux_max_effectif:
-                        nb_niveaux_max[e] = nb_max
-                    else:
-                        nb_niveaux_max[e] = self.nb_niveaux_max_effectif
-                else:
-                    nb_niveaux_max[e] = self.nb_niveaux_max_effectif
-            except ValueError:
-                nb_niveaux_max[e] = self.nb_niveaux_max_effectif
+            # Vide : max global ; au-delà du max global : ramené au max global
+            nb_max = _entier(self.vars[e]["nb_niveaux_max"].get(), minimum=1)
+            nb_niveaux_max[e] = min(nb_max or self.nb_niveaux_max_effectif, self.nb_niveaux_max_effectif)
         
         if not contraintes:
             messagebox.showerror("Erreur", "Aucune contrainte définie")
