@@ -38,6 +38,7 @@ jobs:
           --add-data "moteur;moteur" `
           --add-data "interface;interface" `
           --add-data "export;export" `
+          --add-data "preferences_defaut.json;." `
           --hidden-import tkinter `
           --hidden-import tkinter.ttk `
           --hidden-import csv `
@@ -68,19 +69,8 @@ jobs:
         pip install pyinstaller pillow  # Ajout de pillow pour convertir un éventuel .icns mal formé
     
     - name: Build macOS app
-      run: |
-        pyinstaller --clean --windowed \
-          --name "RepartitionServices" \
-          --add-data "moteur:moteur" \
-          --add-data "interface:interface" \
-          --add-data "export:export" \
-          --hidden-import tkinter \
-          --hidden-import tkinter.ttk \
-          --hidden-import csv \
-          --hidden-import datetime \
-          --icon assets/icon.icns \
-          --osx-bundle-identifier com.votreorganisation.repartitionservices \
-          main.py
+      # Le .spec définit l'application (mode dossier, fichier d'exemple inclus, version)
+      run: pyinstaller --clean --noconfirm RepartitionServices.spec
     
     - name: Create macOS DMG
       run: |

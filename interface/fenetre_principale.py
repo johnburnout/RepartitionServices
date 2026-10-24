@@ -17,7 +17,8 @@ class FenetrePrincipale:
         self.etablissement = ""
         self.matiere = ""
         self.fichier_preferences = None
-        
+        self.fenetre_contraintes = None
+
         # Variables globales pour les contraintes
         self.contraintes_utilisateur = {}
         self.niveaux_souhaites = {}
@@ -239,40 +240,65 @@ class FenetrePrincipale:
         self.mettre_a_jour_affichage()
         self.statusbar.config(text="⚠️ Aucun fichier de préférences - Données par défaut chargées")
     
-    def ouvrir_preferences(self):
+    def ouvrir_preferences(self, parent=None):
         """Ouvre un fichier de préférences."""
         chemin = filedialog.askopenfilename(
+            parent=parent or self.parent,
             title="Charger un fichier de préférences",
             filetypes=[("Fichiers JSON", "*.json"), ("Tous les fichiers", "*.*")],
             defaultextension=".json"
         )
         if chemin:
-            try:
-                with open(chemin, 'r', encoding='utf-8') as f:
-                    prefs = json.load(f)
-                charger_donnees(prefs)
-                self.mettre_a_jour_donnees()
-                if "etablissement" in prefs:
-                    self.etablissement = prefs["etablissement"]
-                if "matiere" in prefs:
-                    self.matiere = prefs["matiere"]
-                self.mettre_a_jour_titre()
-                self.mettre_a_jour_affichage()
-                self.fichier_preferences = chemin
-                self.btn_resultats.config(state=tk.DISABLED)
-                self.solutions = []
-                self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors du chargement : {str(e)}")
-                self.statusbar.config(text=f"❌ Erreur : {str(e)}")
-    
+            self.charger_fichier(chemin)
+
+    def charger_fichier(self, chemin):
+        """Charge un fichier de préférences dans le moteur et dans les fenêtres.
+
+        La fenêtre des contraintes éventuellement ouverte est rechargée : sinon
+        sa saisie (ancienne) écraserait le fichier chargé à sa fermeture.
+        """
+        try:
+            with open(chemin, 'r', encoding='utf-8') as f:
+                prefs = json.load(f)
+            charger_donnees(prefs)
+            self.mettre_a_jour_donnees()
+            if "etablissement" in prefs:
+                self.etablissement = prefs["etablissement"]
+            if "matiere" in prefs:
+                self.matiere = prefs["matiere"]
+            self.mettre_a_jour_titre()
+            self.mettre_a_jour_affichage()
+            self.fichier_preferences = chemin
+            self.btn_resultats.config(state=tk.DISABLED)
+            self.solutions = []
+            self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors du chargement : {str(e)}")
+            self.statusbar.config(text=f"❌ Erreur : {str(e)}")
+            return
+        fenetre = self.fenetre_contraintes_ouverte()
+        if fenetre:
+            fenetre.afficher_preferences(chemin, prefs)
+
+    def fenetre_contraintes_ouverte(self):
+        """Fenêtre des contraintes actuellement ouverte, ou None."""
+        f = self.fenetre_contraintes
+        if f is not None and f.parent.winfo_exists():
+            return f
+        return None
+
     def ouvrir_contraintes(self):
-        """Ouvre la fenêtre de saisie des contraintes."""
+        """Ouvre la fenêtre de saisie des contraintes (une seule à la fois)."""
+        fenetre = self.fenetre_contraintes_ouverte()
+        if fenetre:
+            fenetre.parent.deiconify()
+            fenetre.parent.lift()
+            fenetre.parent.focus_force()
+            return
         # Mettre à jour les données partagées avant d'ouvrir
         self.mettre_a_jour_donnees()
         from interface.fenetre_contraintes import FenetreContraintes
-        fenetre = tk.Toplevel(self.parent)
-        FenetreContraintes(fenetre, self)
+        self.fenetre_contraintes = FenetreContraintes(tk.Toplevel(self.parent), self)
     
     def ouvrir_resultats(self):
         """Ouvre la fenêtre des résultats."""

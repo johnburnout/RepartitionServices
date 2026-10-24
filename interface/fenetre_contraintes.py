@@ -371,64 +371,46 @@ class FenetreContraintes:
             self.label_fichier.config(text="(aucun fichier chargé)")
     
     def ouvrir_preferences(self):
-        chemin = filedialog.askopenfilename(
-            title="Ouvrir un fichier de préférences",
-            filetypes=[("Fichiers JSON", "*.json"), ("Tous les fichiers", "*.*")],
-            defaultextension=".json"
-        )
-        if chemin:
-            try:
-                with open(chemin, 'r', encoding='utf-8') as f:
-                    prefs = json.load(f)
-                
-                # Mettre à jour le moteur
-                charger_donnees(prefs)
-                
-                # Mettre à jour la fenêtre principale
-                self.parent_principal.fichier_preferences = chemin
-                if "etablissement" in prefs:
-                    self.parent_principal.etablissement = prefs["etablissement"]
-                if "matiere" in prefs:
-                    self.parent_principal.matiere = prefs["matiere"]
-                self.parent_principal.mettre_a_jour_donnees()
-                self.parent_principal.mettre_a_jour_affichage()
-                self.parent_principal.mettre_a_jour_titre()
-                
-                # Mettre à jour cette fenêtre
-                self.fichier_preferences = chemin
-                self.mettre_a_jour_label_fichier()
-                
-                # Recharger les données
-                self.recharger_donnees()
-                
-                # Recréer le tableau à partir du fichier (pas de la saisie précédente)
-                self.vars = {}
-                self.creer_tableau()
-                self.parent.update_idletasks()
-                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-                self.mettre_a_jour_total_heures()
-                self.verifier_compatibilite_globale()
-                self.charger_valeurs_depuis_moteur()
-                
-                self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
-                
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors du chargement : {str(e)}")
-                self.statusbar.config(text=f"❌ Erreur : {str(e)}")
-    
+        # Le chargement passe par la fenêtre principale, qui rappelle
+        # afficher_preferences() sur cette fenêtre
+        self.parent_principal.ouvrir_preferences(parent=self.parent)
+
+    def afficher_preferences(self, chemin, prefs):
+        """Remplace la saisie par le contenu d'un fichier déjà chargé dans le moteur."""
+        self.fichier_preferences = chemin
+        self.mettre_a_jour_label_fichier()
+
+        self.recharger_donnees()
+        self.var_etablissement.set(prefs.get("etablissement", self.var_etablissement.get()))
+        self.var_matiere.set(prefs.get("matiere", self.var_matiere.get()))
+        self.var_nb_max_niveaux.set(str(self.nb_niveaux_max_effectif))
+        self.mettre_a_jour_affichage_niveaux()
+        self.mettre_a_jour_enseignants()
+
+        # Recréer le tableau à partir du fichier (pas de la saisie précédente)
+        self.vars = {}
+        self.creer_tableau()
+        self.parent.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.mettre_a_jour_total_heures()
+        self.verifier_compatibilite_globale()
+        self.charger_valeurs_depuis_moteur()
+
+        self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
+
     def sauvegarder_sous(self):
+        if not self.verifier_sauvegarde_possible():
+            return
         chemin = filedialog.asksaveasfilename(
+            parent=self.parent,
             title="Enregistrer les préférences sous...",
             filetypes=[("Fichiers JSON", "*.json"), ("Tous les fichiers", "*.*")],
             defaultextension=".json",
             initialfile="preferences.json"
         )
         if chemin:
-            self.fichier_preferences = chemin
-            self.parent_principal.fichier_preferences = chemin
-            self.mettre_a_jour_label_fichier()
             # Choix explicite de l'utilisateur : autorisé même pour le fichier d'exemple
-            self.sauvegarder_preferences(confirme=True)
+            self.sauvegarder_preferences(chemin)
     
     def a_propos(self):
         messagebox.showinfo("À propos", 
@@ -1062,40 +1044,53 @@ class FenetreContraintes:
             except ValueError:
                 pass
     
-    def sauvegarder_preferences(self, confirme=False):
+    def verifier_sauvegarde_possible(self):
         if not self.compatible_globale:
-            messagebox.showerror("Erreur", 
+            messagebox.showerror("Erreur",
                 "Impossible de sauvegarder : le total des heures des niveaux n'est pas compatible "
                 "avec le total HP+HSA des enseignants.")
+            return False
+        return True
+
+    def sauvegarder_preferences(self, chemin=None):
+        """Enregistre la saisie dans `chemin` (choisi via « Enregistrer sous »)
+        ou, à défaut, dans le fichier courant.
+
+        Le fichier courant ne change qu'une fois l'écriture réussie.
+        """
+        if not self.verifier_sauvegarde_possible():
             return
-        
-        est_exemple = (self.fichier_preferences is not None and
-                       os.path.basename(self.fichier_preferences) == FICHIER_EXEMPLE)
-        if self.fichier_preferences is None or (est_exemple and not confirme):
-            if est_exemple:
-                messagebox.showinfo(
-                    "Fichier d'exemple",
-                    "Le fichier d'exemple ne peut pas être modifié par « Sauvegarder ».\n"
-                    "Choisissez un nom pour enregistrer vos préférences.")
-            self.sauvegarder_sous()
-            return
-        
+
+        if chemin is None:
+            est_exemple = (self.fichier_preferences is not None and
+                           os.path.basename(self.fichier_preferences) == FICHIER_EXEMPLE)
+            if self.fichier_preferences is None or est_exemple:
+                if est_exemple:
+                    messagebox.showinfo(
+                        "Fichier d'exemple",
+                        "Le fichier d'exemple ne peut pas être modifié par « Sauvegarder ».\n"
+                        "Choisissez un nom pour enregistrer vos préférences.")
+                self.sauvegarder_sous()
+                return
+            chemin = self.fichier_preferences
+
         try:
             prefs = self.appliquer_au_moteur()
 
-            dossier = os.path.dirname(self.fichier_preferences)
+            dossier = os.path.dirname(chemin)
             if dossier:
                 os.makedirs(dossier, exist_ok=True)
-            
-            with open(self.fichier_preferences, 'w', encoding='utf-8') as f:
+
+            with open(chemin, 'w', encoding='utf-8') as f:
                 json.dump(prefs, f, indent=4, ensure_ascii=False)
-            
-            self.parent_principal.fichier_preferences = self.fichier_preferences
-            
-            self.statusbar.config(text=f"✅ Préférences sauvegardées dans {os.path.basename(self.fichier_preferences)}")
+
+            self.fichier_preferences = chemin
+            self.parent_principal.fichier_preferences = chemin
+
+            self.statusbar.config(text=f"✅ Préférences sauvegardées dans {os.path.basename(chemin)}")
             self.mettre_a_jour_label_fichier()
-            messagebox.showinfo("Sauvegarde", f"Préférences sauvegardées dans :\n{self.fichier_preferences}")
-            
+            messagebox.showinfo("Sauvegarde", f"Préférences sauvegardées dans :\n{chemin}")
+
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde : {str(e)}")
     
