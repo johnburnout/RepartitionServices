@@ -1,6 +1,6 @@
 # RepartitionServices — Notice d'utilisation
 
-*Version 2.2 — Jean Roussie, Collège La Boétie (Sarlat-La Canéda)*
+*Version 2.3 — Jean Roussie, Collège La Boétie (Sarlat-La Canéda)*
 
 RepartitionServices calcule **toutes les répartitions de services possibles** entre les professeurs d'une même matière, à partir de la structure de l'établissement (niveaux, horaires, nombre de groupes) et des souhaits ou contraintes de chaque enseignant.
 
@@ -87,7 +87,7 @@ Saisissez le nom de l'**établissement** et la **matière**. Ils apparaissent da
 
 ### 4.2 Configuration de l'établissement
 
-- **Nb max de niveaux par enseignant** : nombre maximal de niveaux différents qu'un professeur peut avoir. Cliquez sur **✅ Appliquer** pour reporter cette valeur sur tous les enseignants.
+- **Nb max de niveaux par enseignant** : nombre maximal de niveaux différents qu'un professeur peut avoir. La valeur saisie est prise en compte directement ; **✅ Appliquer** la reporte en plus sur tous les enseignants.
 - **📚 Niveaux** : rappel des niveaux définis (horaire, nombre de groupes).
 - **➕ Ajouter un niveau** : nom, heures par groupe, nombre de groupes. Le maximum par enseignant est fixé à 3 par défaut (modifiable ensuite).
 - **Supprimer** : choisissez un niveau dans la liste puis cliquez sur **➖** (il doit toujours rester au moins un niveau).
@@ -101,7 +101,7 @@ Saisissez le nom de l'**établissement** et la **matière**. Ils apparaissent da
 | ⚠️ orange | Il manque des heures : les niveaux ne suffisent pas à remplir les services |
 | ❌ rouge | Dépassement : même avec toutes les HSA, les heures ne peuvent être couvertes |
 
-> Tant que l'indicateur n'est pas vert, les boutons **Sauvegarder** et **Lancer la recherche** sont bloqués.
+> Tant que l'indicateur n'est pas vert, **Lancer la recherche** est refusé. La saisie peut en revanche être **sauvegardée** à tout moment (un avertissement rappelle que les heures ne sont pas encore équilibrées).
 
 ### 4.3 Gestion des enseignants
 - **➕ Ajouter** : saisissez le nom du nouvel enseignant (les noms doivent être uniques).
@@ -117,7 +117,7 @@ Une ligne par enseignant, avec les colonnes suivantes :
 | **HSA** | Heures supplémentaires maximales acceptées (ex. `2`). `0` = le service doit être **exactement** égal à HP. |
 | **1er bloc / 2nd bloc** | Facultatif. Impose que les groupes de l'enseignant puissent être répartis en deux paquets d'heures donnés (ex. `9` + `9` pour un service partagé entre deux demi-services ou deux sites). Les HSA peuvent s'ajouter à l'un ou l'autre bloc : avec `10` + `8` et 2 HSA, cinq groupes de 4 h (12 h + 8 h) conviennent. Le 2nd bloc est calculé automatiquement (HP − 1er bloc) ; un ⚠️ signale une incohérence avec HP. Laissez vide si non concerné. |
 | **Une colonne par niveau** | Champ numérique + case **Fixe** (voir ci-dessous). Le maximum autorisé pour le niveau est rappelé en en-tête. |
-| **Nb niveaux max** | Nombre maximal de niveaux différents pour cet enseignant (entre 1 et le maximum global ; une valeur hors de cet intervalle est remplacée par le maximum global). |
+| **Nb niveaux max** | Nombre maximal de niveaux différents pour cet enseignant (entier ≥ 1 ; vide = maximum global ; une valeur supérieure au maximum global est ramenée à celui-ci). |
 | **Niveau souhaité** | L'enseignant aura **au moins un groupe** du niveau coché. « Aucun » = pas de souhait. |
 
 **Champ d'un niveau — comment le remplir :**
@@ -137,7 +137,7 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 |---|---|
 | 💾 **Sauvegarder** / *Fichier › Enregistrer les préférences* | Enregistre toute la saisie dans le fichier de préférences courant (demande un nom s'il n'y en a pas, ou si le fichier courant est le fichier d'exemple `preferences_defaut.json`) |
 | *Fichier › Enregistrer sous…* | Enregistre dans un nouveau fichier `.json` |
-| 📂 **Charger** / *Fichier › Ouvrir les préférences…* | Recharge un fichier de préférences |
+| 📂 **Charger** / *Fichier › Ouvrir les préférences…* | Charge un fichier de préférences (la saisie affichée est remplacée par celle du fichier) |
 | 🔄 **Réinitialiser** | Remet toutes les saisies à zéro (HP = 18, HSA = 0, champs vides) après confirmation |
 | 🔍 **Lancer la recherche** | Calcule les solutions (§ 5) |
 | ❌ **Fermer** | Ferme la fenêtre en conservant toute la saisie pour la session (pensez à sauvegarder pour la garder d'une fois sur l'autre) |
@@ -147,10 +147,13 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 ## 5. Lancer la recherche
 
 1. Vérifiez que l'indicateur de total d'heures est **vert**.
-2. Cliquez sur **🔍 Lancer la recherche**. Le curseur passe en sablier pendant le calcul.
-3. À la fin :
+2. Cliquez sur **🔍 Lancer la recherche**. La saisie est d'abord vérifiée : une valeur illisible (HP, HSA, blocs, nombre de groupes, nombre de niveaux max) ou une case **Fixe** cochée sans nombre est signalée, et la recherche n'est pas lancée tant qu'elle n'est pas corrigée.
+3. Pendant le calcul, une fenêtre indique le temps écoulé ; le bouton **Annuler** interrompt la recherche.
+4. À la fin :
    - si des solutions existent, leur nombre est annoncé, la fenêtre de saisie se ferme et le bouton **📊 Voir les résultats** devient actif dans la fenêtre principale ;
-   - sinon, un message invite à **assouplir les contraintes**.
+   - sinon, le message indique la cause : soit les enseignants pour lesquels **aucun service n'est possible** avec leurs propres contraintes (à vérifier en priorité), soit le fait que chacun a des possibilités mais qu'aucune combinaison ne couvre exactement les groupes de chaque niveau.
+
+> La recherche s'arrête à **1 000 solutions** : le résultat est alors annoncé comme « au moins 1 000 solutions ». Ajoutez des contraintes pour réduire le nombre de possibilités.
 
 > Le temps de calcul dépend du nombre d'enseignants et de la liberté laissée : plus les contraintes sont nombreuses, plus la recherche est rapide (et moins il y a de solutions).
 
@@ -158,7 +161,7 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 
 ## 6. La fenêtre « Résultats »
 
-Le titre indique le nombre total de solutions trouvées. **Au maximum 100 solutions** sont consultables à l'écran.
+Le titre indique le nombre de solutions trouvées (« au moins 1 000 » si la limite de la recherche est atteinte, mention reprise dans les exports). **Au maximum 100 solutions** sont consultables à l'écran.
 
 - **Navigation** : ◀◀ Premier, ◀ Précédent, Suivant ▶, Dernier ▶▶, ou saisissez un numéro puis **Aller**.
 - **Tableau** : pour chaque enseignant, le nombre de groupes par niveau, le **total d'heures** avec ✅ (conforme à HP/HSA) ou ❌, et le nombre de niveaux (**NbNiv**).
@@ -186,6 +189,8 @@ Toute la saisie (établissement, matière, niveaux, enseignants et contraintes) 
 3. dans votre dossier personnel (`~` sur macOS, `C:\Users\<nom>` sur Windows).
 
 Le premier fichier trouvé est chargé. Si aucun n'est trouvé, une structure par défaut de collège est proposée (6e : 5,5 h × 8 groupes ; 5e : 4 h × 8 ; 4e : 4 h × 7 ; 3e : 4 h × 7), sans enseignant.
+
+Si un fichier contient des valeurs illisibles ou absentes (par exemple un HP mal saisi, ou un enseignant listé sans son horaire), elles sont remplacées par une valeur par défaut (18 h, 0 HSA…) et la liste des corrections est affichée au chargement. Un fichier invalide (niveau sans nom ou sans horaire, niveau en double…) est refusé avec un message, et les données en cours sont conservées.
 
 Le fichier `preferences_defaut.json` livré avec le logiciel est un **exemple** : « Sauvegarder » ne l'écrase jamais et propose d'enregistrer sous un autre nom.
 
@@ -221,9 +226,9 @@ Les niveaux et enseignants ajoutés, modifiés ou supprimés sont pris en compte
 
 | Problème | Piste |
 |---|---|
-| **Sauvegarder** / **Lancer la recherche** inactifs ou refusés | L'indicateur de total d'heures n'est pas vert : ajustez les HP/HSA ou le nombre de groupes |
-| « Aucune solution trouvée » | Contraintes trop fortes : retirez des valeurs « Fixe », augmentez des maxima, relâchez le nombre de niveaux max ou les blocs, autorisez des HSA |
-| Trop de solutions | Ajoutez des contraintes (exclusions par `0`, valeurs fixes, niveaux souhaités) |
+| **Lancer la recherche** refusé | Erreurs de saisie listées : corrigez-les. Sinon, l'indicateur de total d'heures n'est pas vert : ajustez les HP/HSA ou le nombre de groupes |
+| « Aucune solution trouvée » | Si des enseignants sont nommés, vérifiez d'abord leurs contraintes. Sinon, contraintes trop fortes ensemble : retirez des valeurs « Fixe », augmentez des maxima, relâchez le nombre de niveaux max ou les blocs, autorisez des HSA |
+| Trop de solutions, recherche longue ou « au moins 1 000 solutions » | Ajoutez des contraintes (exclusions par `0`, valeurs fixes, niveaux souhaités) |
 | ❌ dans la barre d'état pour un enseignant | Les maxima saisis dépassent son HP + HSA (simple avertissement) |
 | ⚠️ dans le 2nd bloc | 1er bloc + 2nd bloc ≠ HP : corrigez l'un des deux |
 | « Veuillez entrer un nombre valide » | Un champ de niveau contient autre chose qu'un entier positif |
