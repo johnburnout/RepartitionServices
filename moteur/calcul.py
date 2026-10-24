@@ -358,11 +358,24 @@ def enseignants_sans_service(contraintes_utilisateur, niveaux_souhaites, nb_nive
     return [e for e in enseignants_liste if not combos[e]]
 
 
-def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max, enseignants_liste=None):
+class RechercheAnnulee(Exception):
+    """La recherche a été interrompue à la demande de l'utilisateur."""
+
+
+class _LimiteAtteinte(Exception):
+    pass
+
+
+def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max, enseignants_liste=None,
+                         limite=None, arret=None):
     """Recherche toutes les répartitions possibles.
 
     Retourne une liste de solutions ; chaque solution est un dictionnaire
     {enseignant: {niveau: nombre de groupes}}.
+
+    `limite` : la recherche s'arrête dès que ce nombre de solutions est atteint.
+    `arret` : threading.Event ; s'il est positionné pendant la recherche,
+    RechercheAnnulee est levée.
     """
     if enseignants_liste is None:
         enseignants_liste = enseignants
@@ -401,9 +414,13 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
     plage = range(nb)
 
     def explorer(i, reste):
+        if arret is not None and arret.is_set():
+            raise RechercheAnnulee()
         if i == nb_ens:
             if not any(reste):
                 solutions_brutes.append(tuple(choix))
+                if limite is not None and len(solutions_brutes) >= limite:
+                    raise _LimiteAtteinte()
                 return True
             return False
         cle = (i, reste)
@@ -435,7 +452,10 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
             impasses.add(cle)
         return trouve
 
-    explorer(0, tuple(effectifs.get(n, 0) for n in niveaux))
+    try:
+        explorer(0, tuple(effectifs.get(n, 0) for n in niveaux))
+    except _LimiteAtteinte:
+        pass
 
     # 3. Mise en forme (ordre d'origine des enseignants)
     solutions = []

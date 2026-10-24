@@ -15,8 +15,12 @@ def get_nom_fichier_defaut(extension, matiere=""):
     return f"repartition_{date_str}.{extension}"
 
 def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites, 
-                      nb_niveaux_max_utilisateur, chemin=None, etablissement="", matiere=""):
-    """Sauvegarde les données dans un fichier texte."""
+                      nb_niveaux_max_utilisateur, chemin=None, etablissement="", matiere="",
+                      complet=True):
+    """Sauvegarde les données dans un fichier texte.
+
+    `complet` : False si la recherche s'est arrêtée à la limite de solutions.
+    """
     # Importer les données dynamiquement pour avoir les valeurs actuelles
     from moteur.calcul import (
         enseignants, niveaux, niveaux_data, enseignants_data,
@@ -108,7 +112,10 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
         f.write("-" * 70 + "\n")
         f.write("RÉSULTATS\n")
         f.write("-" * 70 + "\n")
-        f.write(f"Nombre total de solutions : {len(solutions)}\n")
+        if complet:
+            f.write(f"Nombre total de solutions : {len(solutions)}\n")
+        else:
+            f.write(f"Nombre de solutions : au moins {len(solutions)} (recherche arrêtée à cette limite)\n")
         f.write("\n")
         
         if not solutions:
@@ -172,8 +179,12 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
 
 
 def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites, 
-                    nb_niveaux_max_utilisateur, chemin=None, etablissement="", matiere=""):
-    """Sauvegarde les données dans un fichier CSV."""
+                    nb_niveaux_max_utilisateur, chemin=None, etablissement="", matiere="",
+                    complet=True):
+    """Sauvegarde les données dans un fichier CSV.
+
+    `complet` : False si la recherche s'est arrêtée à la limite de solutions.
+    """
     # Importer les données dynamiquement pour avoir les valeurs actuelles
     from moteur.calcul import (
         enseignants, niveaux, niveaux_data, enseignants_data,
@@ -259,7 +270,10 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
         
         # Résultats
         writer.writerow(["RÉSULTATS"])
-        writer.writerow(["Nombre total de solutions", len(solutions)])
+        if complet:
+            writer.writerow(["Nombre total de solutions", len(solutions)])
+        else:
+            writer.writerow(["Nombre de solutions", f"au moins {len(solutions)} (recherche arrêtée à cette limite)"])
         writer.writerow([])
         
         if not solutions:

@@ -9,7 +9,7 @@ from export.export import sauvegarder_texte, sauvegarder_csv, get_nom_fichier_de
 
 class FenetreResultats:
     def __init__(self, parent, solutions, contraintes, niveaux_souhaites, nb_niveaux_max,
-                 etablissement="", matiere=""):
+                 etablissement="", matiere="", complet=True):
         self.parent = parent
         self.parent.title(f"Résultats - {matiere} - {etablissement}" if etablissement else "Résultats")
         self.parent.geometry("1100x650")
@@ -24,6 +24,7 @@ class FenetreResultats:
         self.nb_niveaux_max = nb_niveaux_max
         self.etablissement = etablissement
         self.matiere = matiere
+        self.complet = complet   # False : la recherche s'est arrêtée à la limite
         
         self.index_actuel = 0
         
@@ -48,7 +49,10 @@ class FenetreResultats:
             titre += f"{self.etablissement} - "
         if self.matiere:
             titre += f"{self.matiere} - "
-        titre += f"{self.nb_solutions} solution(s) trouvée(s)"
+        if self.complet:
+            titre += f"{self.nb_solutions} solution(s) trouvée(s)"
+        else:
+            titre += f"au moins {self.nb_solutions} solutions (recherche limitée)"
         
         ttk.Label(cadre_titre, text=titre, font=("Arial", 12, "bold")).pack(side=tk.LEFT)
         
@@ -212,7 +216,8 @@ class FenetreResultats:
             try:
                 sauvegarder_texte(
                     self.solutions, self.contraintes, self.niveaux_souhaites, 
-                    self.nb_niveaux_max, chemin, self.etablissement, self.matiere
+                    self.nb_niveaux_max, chemin, self.etablissement, self.matiere,
+                    complet=self.complet
                 )
                 messagebox.showinfo("Export terminé", f"Export terminé : {os.path.basename(chemin)}")
             except Exception as e:
@@ -233,7 +238,8 @@ class FenetreResultats:
             try:
                 sauvegarder_csv(
                     self.solutions, self.contraintes, self.niveaux_souhaites, 
-                    self.nb_niveaux_max, chemin, self.etablissement, self.matiere
+                    self.nb_niveaux_max, chemin, self.etablissement, self.matiere,
+                    complet=self.complet
                 )
                 messagebox.showinfo("Export terminé", f"Export terminé : {os.path.basename(chemin)}")
             except Exception as e:

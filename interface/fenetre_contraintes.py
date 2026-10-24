@@ -5,11 +5,17 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
 import json
 import os
+import threading
+import time
 from moteur.calcul import charger_donnees
 
 
 # Fichier d'exemple livré avec le logiciel : jamais écrasé par « Sauvegarder »
 FICHIER_EXEMPLE = "preferences_defaut.json"
+
+# Au-delà, la recherche s'arrête (temps et mémoire) : les résultats affichent
+# « au moins N solutions »
+LIMITE_SOLUTIONS = 1000
 
 
 def _float(texte, defaut=None):
@@ -1105,8 +1111,6 @@ class FenetreContraintes:
         self.statusbar.config(text="🔄 Réinitialisé")
     
     def lancer_recherche(self):
-        from moteur.calcul import rechercher_solutions
-        
         self.parent_principal.etablissement = self.var_etablissement.get().strip()
         self.parent_principal.matiere = self.var_matiere.get().strip()
         self.parent_principal.mettre_a_jour_titre()
@@ -1173,35 +1177,103 @@ class FenetreContraintes:
             messagebox.showerror("Erreur", "Aucune contrainte définie")
             return
         
-        self.parent.config(cursor="watch")
-        self.parent.update()
         self.statusbar.config(text="⏳ Recherche en cours...")
-        
-        try:
-            solutions = rechercher_solutions(
-                contraintes,
-                niveaux_souhaites,
-                nb_niveaux_max,
-                enseignants_liste=self.enseignants_liste
-            )
-        except Exception as e:
-            self.parent.config(cursor="")
+
+        # Recherche dans un fil séparé : la fenêtre reste réactive et peut
+        # être annulée. Le fil ne touche pas à Tkinter (non thread-safe).
+        arret = threading.Event()
+        resultat = {}
+
+        def travail():
+            from moteur.calcul import rechercher_solutions, RechercheAnnulee
+            try:
+                # Une solution de plus que la limite : pour savoir si elle est atteinte
+                resultat["solutions"] = rechercher_solutions(
+                    contraintes,
+                    niveaux_souhaites,
+                    nb_niveaux_max,
+                    enseignants_liste=self.enseignants_liste,
+                    limite=LIMITE_SOLUTIONS + 1,
+                    arret=arret,
+                )
+            except RechercheAnnulee:
+                resultat["annulee"] = True
+            except Exception as e:
+                resultat["erreur"] = e
+
+        fil = threading.Thread(target=travail, daemon=True)
+        dialogue = self.afficher_progression(arret)
+        debut = time.monotonic()
+        fil.start()
+
+        def surveiller():
+            if fil.is_alive():
+                if not arret.is_set():
+                    dialogue.label.config(
+                        text=f"Recherche en cours… {int(time.monotonic() - debut)} s")
+                self.parent.after(200, surveiller)
+                return
+            dialogue.destroy()
+            self.terminer_recherche(resultat, contraintes, niveaux_souhaites, nb_niveaux_max)
+
+        self.parent.after(200, surveiller)
+
+    def afficher_progression(self, arret):
+        """Fenêtre modale « Recherche en cours » avec un bouton Annuler."""
+        dialogue = tk.Toplevel(self.parent)
+        dialogue.title("Recherche")
+        dialogue.resizable(False, False)
+        dialogue.transient(self.parent)
+
+        dialogue.label = ttk.Label(dialogue, text="Recherche en cours…", width=32, anchor="center")
+        dialogue.label.pack(padx=20, pady=(15, 5))
+        barre = ttk.Progressbar(dialogue, mode="indeterminate", length=250)
+        barre.pack(padx=20, pady=5)
+        barre.start(15)
+
+        def annuler():
+            arret.set()
+            dialogue.label.config(text="Annulation…")
+            bouton.config(state=tk.DISABLED)
+
+        bouton = ttk.Button(dialogue, text="Annuler", command=annuler)
+        bouton.pack(pady=(5, 15))
+        dialogue.protocol("WM_DELETE_WINDOW", annuler)
+        dialogue.grab_set()
+        return dialogue
+
+    def terminer_recherche(self, resultat, contraintes, niveaux_souhaites, nb_niveaux_max):
+        if resultat.get("annulee"):
+            self.statusbar.config(text="⏹ Recherche annulée")
+            return
+        if "erreur" in resultat:
+            e = resultat["erreur"]
             messagebox.showerror("Erreur", f"Erreur lors de la recherche : {str(e)}")
             self.statusbar.config(text="❌ Erreur")
             return
-        
-        self.parent.config(cursor="")
-        
+
+        solutions = resultat["solutions"]
+        complet = len(solutions) <= LIMITE_SOLUTIONS
+        solutions = solutions[:LIMITE_SOLUTIONS]
+
         self.parent_principal.set_solutions(
             solutions, contraintes, niveaux_souhaites, nb_niveaux_max,
             self.var_etablissement.get().strip(),
-            self.var_matiere.get().strip()
+            self.var_matiere.get().strip(),
+            complet=complet
         )
-        
+
         if solutions:
-            self.statusbar.config(text=f"✅ {len(solutions)} solution(s) trouvée(s)")
+            if complet:
+                nombre = f"{len(solutions)} solution(s) trouvée(s)"
+                detail = ""
+            else:
+                nombre = f"Au moins {len(solutions)} solutions trouvées"
+                detail = ("La recherche s'est arrêtée à cette limite. "
+                          "Ajoutez des contraintes pour réduire le nombre de possibilités.\n\n")
+            self.statusbar.config(text=f"✅ {nombre}")
             messagebox.showinfo("Recherche terminée",
-                f"{len(solutions)} solution(s) trouvée(s) !\n\n"
+                f"{nombre} !\n\n{detail}"
                 f"Cliquez sur 'Voir les résultats' dans la fenêtre principale.")
             self.parent.destroy()
         else:

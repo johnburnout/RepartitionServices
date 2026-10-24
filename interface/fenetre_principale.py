@@ -24,6 +24,7 @@ class FenetrePrincipale:
         self.niveaux_souhaites = {}
         self.nb_niveaux_max_utilisateur = {}
         self.solutions = []
+        self.solutions_completes = True   # False : limite de la recherche atteinte
         
         # DONNÉES PARTAGÉES
         self.enseignants_liste = []
@@ -310,7 +311,7 @@ class FenetrePrincipale:
         fenetre = tk.Toplevel(self.parent)
         FenetreResultats(fenetre, self.solutions, self.contraintes_utilisateur, 
                          self.niveaux_souhaites, self.nb_niveaux_max_utilisateur,
-                         self.etablissement, self.matiere)
+                         self.etablissement, self.matiere, self.solutions_completes)
     
     def a_propos(self):
         """Affiche la boîte À propos."""
@@ -328,9 +329,12 @@ class FenetrePrincipale:
             self.btn_resultats.config(state=tk.DISABLED)
             self.statusbar.config(text="ℹ️ Données modifiées : relancez la recherche")
 
-    def set_solutions(self, solutions, contraintes, niveaux_souhaites, nb_niveaux_max, etablissement=None, matiere=None):
-        """Met à jour les solutions après la recherche."""
+    def set_solutions(self, solutions, contraintes, niveaux_souhaites, nb_niveaux_max, etablissement=None, matiere=None,
+                      complet=True):
+        """Met à jour les solutions après la recherche (`complet` : False si la
+        recherche s'est arrêtée à la limite de solutions)."""
         self.solutions = solutions
+        self.solutions_completes = complet
         self.contraintes_utilisateur = contraintes
         self.niveaux_souhaites = niveaux_souhaites
         self.nb_niveaux_max_utilisateur = nb_niveaux_max
@@ -343,7 +347,8 @@ class FenetrePrincipale:
         
         if solutions:
             self.btn_resultats.config(state=tk.NORMAL)
-            self.statusbar.config(text=f"✅ {len(solutions)} solution(s) trouvée(s)")
+            nombre = f"{len(solutions)} solution(s)" if complet else f"au moins {len(solutions)} solutions"
+            self.statusbar.config(text=f"✅ {nombre} trouvée(s)")
         else:
             self.btn_resultats.config(state=tk.DISABLED)
             self.statusbar.config(text="❌ Aucune solution trouvée")

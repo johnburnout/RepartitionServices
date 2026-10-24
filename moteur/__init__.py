@@ -9,5 +9,6 @@ from .calcul import (
     solution_to_tuple, verifier_contrainte_blocs_rapide,
     get_nb_groupes_possibles, generer_combinaisons_enseignant,
     combinaisons_valides, rechercher_solutions, enseignants_sans_service,
+    RechercheAnnulee,
     charger_donnees
 )
