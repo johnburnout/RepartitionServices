@@ -251,7 +251,7 @@ class FenetreContraintes:
         cadre_boutons = ttk.Frame(self.parent)
         cadre_boutons.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
       
-        self.btn_sauvegarder = ttk.Button(cadre_boutons, text="💾 Sauvegarder", command=self.sauvegarder_preferences, state=tk.DISABLED)
+        self.btn_sauvegarder = ttk.Button(cadre_boutons, text="💾 Sauvegarder", command=self.sauvegarder_preferences)
         self.btn_sauvegarder.pack(side=tk.LEFT, padx=5)
         ttk.Button(cadre_boutons, text="📂 Charger", command=self.ouvrir_preferences).pack(side=tk.LEFT, padx=5)
         ttk.Button(cadre_boutons, text="🔄 Réinitialiser", command=self.reinitialiser).pack(side=tk.LEFT, padx=5)
@@ -399,8 +399,6 @@ class FenetreContraintes:
         self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
 
     def sauvegarder_sous(self):
-        if not self.verifier_sauvegarde_possible():
-            return
         chemin = filedialog.asksaveasfilename(
             parent=self.parent,
             title="Enregistrer les préférences sous...",
@@ -487,27 +485,17 @@ class FenetreContraintes:
             )
     
     def verifier_compatibilite_globale(self):
-        if not hasattr(self, 'btn_sauvegarder') or self.btn_sauvegarder is None:
-            return
-        
+        """Heures des niveaux compatibles avec HP/HSA des enseignants ?
+        Condition pour lancer la recherche (pas pour sauvegarder)."""
         total_niveaux = self.calculer_total_heures_niveaux()
         total_hp, total_hsa = self.calculer_total_hp_enseignants()
         total_max = total_hp + total_hsa
-        
+
         if total_hp == 0 and total_max == 0:
             self.compatible_globale = False
-            self.btn_sauvegarder.config(state=tk.DISABLED)
             return
-        
+
         self.compatible_globale = (total_hp <= total_niveaux <= total_max)
-        
-        try:
-            if self.compatible_globale:
-                self.btn_sauvegarder.config(state=tk.NORMAL)
-            else:
-                self.btn_sauvegarder.config(state=tk.DISABLED)
-        except tk.TclError:
-            pass
     
     def verifier_compatibilite_heures(self):
         resultats = {}
@@ -1044,23 +1032,14 @@ class FenetreContraintes:
             except ValueError:
                 pass
     
-    def verifier_sauvegarde_possible(self):
-        if not self.compatible_globale:
-            messagebox.showerror("Erreur",
-                "Impossible de sauvegarder : le total des heures des niveaux n'est pas compatible "
-                "avec le total HP+HSA des enseignants.")
-            return False
-        return True
-
     def sauvegarder_preferences(self, chemin=None):
         """Enregistre la saisie dans `chemin` (choisi via « Enregistrer sous »)
         ou, à défaut, dans le fichier courant.
 
+        Une saisie en cours (heures pas encore équilibrées) peut être
+        enregistrée : un avertissement le signale.
         Le fichier courant ne change qu'une fois l'écriture réussie.
         """
-        if not self.verifier_sauvegarde_possible():
-            return
-
         if chemin is None:
             est_exemple = (self.fichier_preferences is not None and
                            os.path.basename(self.fichier_preferences) == FICHIER_EXEMPLE)
@@ -1087,9 +1066,17 @@ class FenetreContraintes:
             self.fichier_preferences = chemin
             self.parent_principal.fichier_preferences = chemin
 
-            self.statusbar.config(text=f"✅ Préférences sauvegardées dans {os.path.basename(chemin)}")
             self.mettre_a_jour_label_fichier()
-            messagebox.showinfo("Sauvegarde", f"Préférences sauvegardées dans :\n{chemin}")
+            if self.compatible_globale:
+                self.statusbar.config(text=f"✅ Préférences sauvegardées dans {os.path.basename(chemin)}")
+                messagebox.showinfo("Sauvegarde", f"Préférences sauvegardées dans :\n{chemin}")
+            else:
+                self.statusbar.config(text=f"⚠️ Saisie incomplète sauvegardée dans {os.path.basename(chemin)}")
+                messagebox.showwarning("Sauvegarde",
+                    f"Préférences sauvegardées dans :\n{chemin}\n\n"
+                    "Attention : le total des heures des niveaux n'est pas encore compatible "
+                    "avec le total HP+HSA des enseignants. La recherche ne pourra être lancée "
+                    "qu'une fois les heures équilibrées.")
 
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la sauvegarde : {str(e)}")
