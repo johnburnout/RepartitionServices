@@ -4,7 +4,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
-from moteur.calcul import total_heures, nb_niveaux_utilises, data
+from moteur.calcul import total_heures, nb_niveaux_utilises, verifier_horaire
 from export.export import sauvegarder_texte, sauvegarder_csv, get_nom_fichier_defaut
 
 class FenetreResultats:
@@ -160,13 +160,9 @@ class FenetreResultats:
             total = total_heures(d)
             nb_niv = nb_niveaux_utilises(d)
             
-            # Récupérer l'horaire depuis data
+            # Même vérification (avec tolérance) que le moteur
             if e in self.data:
-                base, sup = self.data[e]["horaire"]
-                if sup == 0:
-                    ok = "✅" if total == base else "❌"
-                else:
-                    ok = "✅" if base <= total <= base + sup else "❌"
+                ok = "✅" if verifier_horaire(e, d) else "❌"
             else:
                 ok = "❓"
             

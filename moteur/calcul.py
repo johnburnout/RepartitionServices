@@ -21,6 +21,9 @@ nb_total_niveaux = 0
 nb_niveaux_max_effectif = 3
 NB_NIVEAUX_MAX_STRUCTURE = 3
 
+# Tolérance sur les heures (sommes de décimaux non exactes en flottants)
+_EPS = 0.01
+
 def _nombre(valeur, defaut):
     """Convertit une saisie ("18", "2,5", "", None) en float."""
     if valeur is None:
@@ -84,9 +87,7 @@ def verifier_horaire(nom, grp):
         return True
     base, sup = data[nom]["horaire"]
     total = total_heures(grp)
-    if sup == 0:
-        return total == base
-    return base <= total <= base + sup
+    return base - _EPS <= total <= base + sup + _EPS
 
 def solution_to_tuple(sol, enseignants_liste=None):
     """Convertit une solution en tuple trié pour le cache."""
@@ -256,9 +257,6 @@ def generer_combinaisons_enseignant(nom, nb_groupes_total, contraintes_utilisate
 #          enseignants restants ;
 #      et une mémoire des états (enseignant, groupes restants) sans issue.
 
-_EPS = 0.01
-
-
 def _contrainte(contraintes_enseignant, n):
     c = contraintes_enseignant.get(n) or {}
     return c.get("max"), c.get("exact")
@@ -334,6 +332,32 @@ def combinaisons_valides(nom, contraintes_enseignant, nb_niveaux_max=None, nivea
     return resultats
 
 
+def _combinaisons_par_enseignant(enseignants_liste, contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max):
+    return {
+        e: combinaisons_valides(
+            e,
+            contraintes_utilisateur.get(e, {}),
+            nb_niveaux_max.get(e) if nb_niveaux_max else None,
+            niveaux_souhaites.get(e) if niveaux_souhaites else None,
+        )
+        for e in enseignants_liste
+    }
+
+
+def enseignants_sans_service(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max, enseignants_liste=None):
+    """Enseignants dont les contraintes, prises isolément, n'admettent aucun service.
+
+    Sert à expliquer une recherche sans solution : liste vide si chaque
+    enseignant a au moins une possibilité (l'impossibilité vient alors de la
+    combinaison des enseignants).
+    """
+    if enseignants_liste is None:
+        enseignants_liste = enseignants
+    combos = _combinaisons_par_enseignant(
+        enseignants_liste, contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max)
+    return [e for e in enseignants_liste if not combos[e]]
+
+
 def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max, enseignants_liste=None):
     """Recherche toutes les répartitions possibles.
 
@@ -350,16 +374,10 @@ def rechercher_solutions(contraintes_utilisateur, niveaux_souhaites, nb_niveaux_
     heures = [horaire_volume[n] for n in niveaux]
 
     # 1. Combinaisons de chaque enseignant (calculées une seule fois)
-    combos = {}
-    for e in enseignants_liste:
-        combos[e] = combinaisons_valides(
-            e,
-            contraintes_utilisateur.get(e, {}),
-            nb_niveaux_max.get(e) if nb_niveaux_max else None,
-            niveaux_souhaites.get(e) if niveaux_souhaites else None,
-        )
-        if not combos[e]:
-            return []      # un enseignant sans aucune possibilité : pas de solution
+    combos = _combinaisons_par_enseignant(
+        enseignants_liste, contraintes_utilisateur, niveaux_souhaites, nb_niveaux_max)
+    if not all(combos.values()):
+        return []      # un enseignant sans aucune possibilité : pas de solution
 
     # 2. Les enseignants les plus contraints d'abord
     ordre = sorted(enseignants_liste, key=lambda e: len(combos[e]))

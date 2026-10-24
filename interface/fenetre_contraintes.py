@@ -1218,7 +1218,22 @@ class FenetreContraintes:
                 f"Cliquez sur 'Voir les résultats' dans la fenêtre principale.")
             self.parent.destroy()
         else:
-            self.statusbar.config(text="❌ Aucune solution trouvée")
-            messagebox.showwarning("Recherche terminée",
-                "Aucune solution trouvée.\n"
-                "Vérifiez vos contraintes ou assouplissez-les.")
+            from moteur.calcul import enseignants_sans_service
+            bloques = enseignants_sans_service(
+                contraintes, niveaux_souhaites, nb_niveaux_max,
+                enseignants_liste=self.enseignants_liste
+            )
+            if bloques:
+                self.statusbar.config(text=f"❌ Aucun service possible pour : {', '.join(bloques)}")
+                messagebox.showwarning("Recherche terminée",
+                    "Aucune solution trouvée.\n\n"
+                    f"Aucun service n'est possible pour : {', '.join(bloques)}.\n\n"
+                    "Vérifiez pour ce(s) enseignant(s) : HP et HSA, maximums et valeurs "
+                    "fixes par niveau, nombre de niveaux max, niveau souhaité et blocs.")
+            else:
+                self.statusbar.config(text="❌ Aucune solution trouvée")
+                messagebox.showwarning("Recherche terminée",
+                    "Aucune solution trouvée.\n\n"
+                    "Chaque enseignant a des services possibles, mais aucune combinaison "
+                    "ne couvre exactement les groupes de chaque niveau.\n"
+                    "Assouplissez les contraintes.")
