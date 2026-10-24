@@ -49,6 +49,3 @@ RepartitionServices_iso/
 *.iso
 *.zip
 *.tar.gz
-
-# Fichiers de configuration de version (s'il est généré automatiquement)
-#version.plist    # si vous le générez à chaque build, sinon gardez-le

@@ -1,6 +1,6 @@
 # main.py
 # Point d'entrée de l'application
-# Version 2.2 - Interface graphique Tkinter
+# Interface graphique Tkinter (version : voir version.py)
 
 import os
 import sys

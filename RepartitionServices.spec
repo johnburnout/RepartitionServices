@@ -5,7 +5,12 @@
 # .app est déconseillé par PyInstaller sur macOS (le programme tourne dans un
 # second processus, ce qui perturbe les fenêtres et les clics).
 
-VERSION = "2.2"
+import os
+import re
+
+# Version unique : version.py (VERSION = "x.y")
+with open(os.path.join(SPECPATH, "version.py"), encoding="utf-8") as f:
+    VERSION = re.search(r'VERSION = "([^"]+)"', f.read()).group(1)
 
 a = Analysis(
     ['main.py'],
@@ -56,7 +61,7 @@ app = BUNDLE(
     coll,
     name='RepartitionServices.app',
     icon='assets/icon.icns',
-    bundle_identifier='com.votreorganisation.repartitionservices',
+    bundle_identifier='io.github.johnburnout.repartitionservices',
     info_plist={
         'CFBundleName': 'RepartitionServices',
         'CFBundleShortVersionString': VERSION,

@@ -6,6 +6,8 @@ from tkinter import ttk, messagebox, filedialog
 import json
 import os
 from moteur.calcul import charger_donnees
+from interface.styles import configurer_styles
+from version import VERSION
 
 class FenetrePrincipale:
     def __init__(self, parent):
@@ -51,26 +53,17 @@ class FenetrePrincipale:
         """Met à jour le titre de la fenêtre."""
         titre = "Répartition des services"
         if self.etablissement and self.matiere:
-            titre = f"{self.etablissement} - {self.matiere} - v2.2"
+            titre = f"{self.etablissement} - {self.matiere} - v{VERSION}"
         elif self.etablissement:
-            titre = f"{self.etablissement} - v2.2"
+            titre = f"{self.etablissement} - v{VERSION}"
         elif self.matiere:
-            titre = f"{self.matiere} - v2.2"
+            titre = f"{self.matiere} - v{VERSION}"
         self.parent.title(titre)
-    
-    def configurer_styles(self):
-        """Configure les styles personnalisés pour l'application."""
-        style = ttk.Style()
-        style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
-        style.configure("Primary.TButton", font=("Arial", 10, "bold"))
-        style.configure("TLabelframe", font=("Arial", 10, "bold"))
-        style.configure("TEntry", font=("Arial", 10))
-        return style
     
     def creer_widgets(self):
         """Crée tous les widgets de la fenêtre principale."""
         # Appliquer les styles
-        self.configurer_styles()
+        configurer_styles()
         
         # --- Barre de menu ---
         menubar = tk.Menu(self.parent)
@@ -199,29 +192,17 @@ class FenetrePrincipale:
         for chemin in chemins_possibles:
             if os.path.exists(chemin):
                 try:
-                    with open(chemin, 'r', encoding='utf-8') as f:
-                        prefs = json.load(f)
-                    avertissements = charger_donnees(prefs)
-                    self.mettre_a_jour_donnees()
-                    if "etablissement" in prefs:
-                        self.etablissement = prefs["etablissement"]
-                    if "matiere" in prefs:
-                        self.matiere = prefs["matiere"]
-                    self.mettre_a_jour_titre()
-                    self.mettre_a_jour_affichage()
-                    self.fichier_preferences = chemin
-                    self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
-                    self.signaler_avertissements(chemin, avertissements)
-                    return
+                    _, avertissements = self.lire_fichier(chemin)
                 except Exception as e:
                     self.statusbar.config(text=f"⚠️ Erreur de chargement : {str(e)}")
+                    continue
+                self.signaler_avertissements(chemin, avertissements)
+                return
         
         self.creer_donnees_defaut()
     
     def creer_donnees_defaut(self):
         """Crée des données par défaut pour le premier lancement."""
-        from moteur.calcul import charger_donnees
-        
         prefs = {
             "enseignants": {},
             "niveaux": [
@@ -260,20 +241,7 @@ class FenetrePrincipale:
         sa saisie (ancienne) écraserait le fichier chargé à sa fermeture.
         """
         try:
-            with open(chemin, 'r', encoding='utf-8') as f:
-                prefs = json.load(f)
-            avertissements = charger_donnees(prefs)
-            self.mettre_a_jour_donnees()
-            if "etablissement" in prefs:
-                self.etablissement = prefs["etablissement"]
-            if "matiere" in prefs:
-                self.matiere = prefs["matiere"]
-            self.mettre_a_jour_titre()
-            self.mettre_a_jour_affichage()
-            self.fichier_preferences = chemin
-            self.btn_resultats.config(state=tk.DISABLED)
-            self.solutions = []
-            self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
+            prefs, avertissements = self.lire_fichier(chemin)
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors du chargement : {str(e)}")
             self.statusbar.config(text=f"❌ Erreur : {str(e)}")
@@ -282,6 +250,28 @@ class FenetrePrincipale:
         if fenetre:
             fenetre.afficher_preferences(chemin, prefs)
         self.signaler_avertissements(chemin, avertissements)
+
+    def lire_fichier(self, chemin):
+        """Lit un fichier de préférences et le charge dans le moteur et dans
+        cette fenêtre. Lève une exception si le fichier est illisible ou invalide.
+
+        Retourne (préférences, avertissements de charger_donnees).
+        """
+        with open(chemin, 'r', encoding='utf-8') as f:
+            prefs = json.load(f)
+        avertissements = charger_donnees(prefs)
+        self.mettre_a_jour_donnees()
+        if "etablissement" in prefs:
+            self.etablissement = prefs["etablissement"]
+        if "matiere" in prefs:
+            self.matiere = prefs["matiere"]
+        self.mettre_a_jour_titre()
+        self.mettre_a_jour_affichage()
+        self.fichier_preferences = chemin
+        self.btn_resultats.config(state=tk.DISABLED)
+        self.solutions = []
+        self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")
+        return prefs, avertissements
 
     def signaler_avertissements(self, chemin, avertissements):
         """Valeurs du fichier illisibles ou absentes, remplacées au chargement."""
@@ -332,7 +322,7 @@ class FenetrePrincipale:
     def a_propos(self):
         """Affiche la boîte À propos."""
         messagebox.showinfo("À propos", 
-            "Répartition des services - v2.2\n\n"
+            f"Répartition des services - v{VERSION}\n\n"
             "Développé par Jean Roussie\n"
             "Collège La Boétie - Sarlat\n"
             "2026\n\n"

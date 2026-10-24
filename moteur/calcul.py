@@ -1,10 +1,6 @@
 # moteur/calcul.py
 # Moteur de calcul
 
-from itertools import product, combinations
-import json
-import os
-
 # ============================================================
 # DONNÉES GLOBALES (chargées dynamiquement)
 # ============================================================
@@ -24,7 +20,7 @@ NB_NIVEAUX_MAX_STRUCTURE = 3
 # Tolérance sur les heures (sommes de décimaux non exactes en flottants)
 _EPS = 0.01
 
-def _nombre(valeur, defaut=None):
+def lire_nombre(valeur, defaut=None):
     """Convertit une saisie ("18", "2,5", "", None) en float, ou `defaut`."""
     if isinstance(valeur, bool):
         return defaut
@@ -49,7 +45,7 @@ def _entier(valeur, defaut, minimum, description):
     """Entier >= minimum ; `defaut` si absent ; ValueError si illisible."""
     if _vide(valeur):
         return defaut
-    x = _nombre(valeur)
+    x = lire_nombre(valeur)
     if x is None or x != int(x) or x < minimum:
         raise ValueError(f"{description} : « {valeur} » n'est pas un entier >= {minimum}")
     return int(x)
@@ -78,7 +74,7 @@ def charger_donnees(preferences):
         nom = str(d["nom"]).strip()
         if any(x["nom"] == nom for x in nv_niveaux_data):
             raise ValueError(f"niveau « {nom} » défini deux fois")
-        heures = _nombre(d.get("heures"))
+        heures = lire_nombre(d.get("heures"))
         if heures is None or heures <= 0:
             raise ValueError(f"niveau « {nom} » : heures « {d.get('heures')} » invalides")
         nv_niveaux_data.append({
@@ -116,12 +112,12 @@ def charger_donnees(preferences):
         if not isinstance(ens, dict):
             avertissements.append(f"{e} : horaire absent du fichier, 18 h (sans HSA) utilisées")
             ens = {}
-        hp = _nombre(ens.get("hp"))
+        hp = lire_nombre(ens.get("hp"))
         if hp is None or hp <= 0:
             if ens:
                 avertissements.append(f"{e} : HP « {ens.get('hp', '')} » illisible, 18 h utilisées")
             hp = 18.0
-        hsa = _nombre(ens.get("hsa"))
+        hsa = lire_nombre(ens.get("hsa"))
         if hsa is None or hsa < 0:
             if not _vide(ens.get("hsa")):
                 avertissements.append(f"{e} : HSA « {ens.get('hsa')} » illisible, 0 h utilisée")
@@ -171,17 +167,6 @@ def verifier_horaire(nom, grp):
     total = total_heures(grp)
     return base - _EPS <= total <= base + sup + _EPS
 
-def solution_to_tuple(sol, enseignants_liste=None):
-    """Convertit une solution en tuple trié pour le cache."""
-    if enseignants_liste is None:
-        enseignants_liste = enseignants  # fallback global
-    items = []
-    for e in enseignants_liste:
-        d = sol.get(e, {})
-        valeurs = [e] + [d.get(n, 0) for n in niveaux]
-        items.append(tuple(valeurs))
-    return tuple(sorted(items))
-
 # ============================================================
 # VÉRIFICATION DES BLOCS (optimisée)
 # ============================================================
@@ -218,110 +203,6 @@ def verifier_contrainte_blocs_rapide(d, contrainte_blocs):
     # 1er paquet >= b1 et 2nd paquet (le reste) >= b2
     return any(b1 <= x <= total - b2 for x in sommes)
 
-
-# ============================================================
-# GÉNÉRATION DES COMBINAISONS
-# ============================================================
-
-def get_nb_groupes_possibles(nom):
-    """Détermine les nombres de groupes possibles pour un enseignant (dynamique)."""
-    if nom not in data:
-        return [4, 5]  # valeur par défaut si l'enseignant n'existe pas
-    base, sup = data[nom]["horaire"]
-    nb_possibles = set()
-    
-    # Construire les plages pour chaque niveau
-    plages = []
-    for n in niveaux:
-        max_val = max_par_enseignant.get(n, 3)  # 3 par défaut si absent
-        plages.append(range(0, max_val + 1))
-        
-    # Parcourir toutes les combinaisons de groupes
-    for comb in product(*plages):
-        total_heures = sum(comb[i] * horaire_volume[niveaux[i]] for i in range(len(niveaux)))
-        if sup == 0:
-            if abs(total_heures - base) < 0.01:
-                nb_possibles.add(sum(comb))
-        else:
-            if base <= total_heures <= base + sup:
-                nb_possibles.add(sum(comb))
-                
-    return sorted(nb_possibles)
-
-def generer_combinaisons_enseignant(nom, nb_groupes_total, contraintes_utilisateur, nb_niveaux_max=None):
-    """Génère les combinaisons pour un enseignant (ultra-optimisé)."""
-    contrainte_blocs = None
-    if nom in data:
-        contrainte_blocs = data[nom].get("contrainte_repartition", None)
-    
-    # Déterminer les niveaux autorisés
-    niveaux_autorises = []
-    for n in niveaux:
-        max_val = contraintes_utilisateur[nom][n]["max"]
-        if max_val is None or max_val > 0:
-            niveaux_autorises.append(n)
-            
-    if not niveaux_autorises:
-        return
-    
-    # Trier les niveaux par ordre décroissant d'heures (pour optimiser)
-    niveaux_autorises.sort(key=lambda n: horaire_volume[n], reverse=True)
-    
-    plages = []
-    bornes = []
-    for n in niveaux_autorises:
-        # Max global du niveau
-        max_val = max_par_enseignant.get(n, 3)
-        
-        # Max utilisateur
-        user_max = contraintes_utilisateur[nom][n]["max"]
-        if user_max is not None:
-            max_val = min(max_val, user_max)
-        
-        max_val = min(nb_groupes_total, max_val)
-        plages.append(range(0, max_val + 1))
-        bornes.append(max_val)
-    
-    # Vérification rapide : si la somme des max est inférieure au nombre de groupes, impossible
-    if sum(bornes) < nb_groupes_total:
-        return
-    
-    for comb in product(*plages):
-        if sum(comb) != nb_groupes_total:
-            continue
-        
-        d = dict(zip(niveaux_autorises, comb))
-        for n in niveaux:
-            if n not in d:
-                d[n] = 0
-                
-        # Contraintes exact
-        ok = True
-        for n in niveaux:
-            exact_val = contraintes_utilisateur[nom][n]["exact"]
-            if exact_val is not None:
-                if d.get(n, 0) != exact_val:
-                    ok = False
-                    break
-        if not ok:
-            continue
-        
-        # Vérification de l'horaire
-        if not verifier_horaire(nom, d):
-            continue
-        
-        # Contrainte nombre de niveaux
-        nb_niv = nb_niveaux_utilises(d)
-        if nb_niveaux_max is not None and nb_niv > nb_niveaux_max:
-            continue
-        if nb_niv > nb_niveaux_max_effectif:
-            continue
-        
-        # Contrainte blocs
-        if contrainte_blocs and not verifier_contrainte_blocs_rapide(d, contrainte_blocs):
-            continue
-        
-        yield d
 
 # ============================================================
 # RECHERCHE DES SOLUTIONS

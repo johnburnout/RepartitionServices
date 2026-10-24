@@ -44,6 +44,7 @@ jobs:
           --hidden-import csv `
           --hidden-import datetime `
           --icon assets/icon.ico `
+          --version-file version.txt `
           main.py
     
     - name: Upload Windows artifact

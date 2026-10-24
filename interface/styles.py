@@ -1,7 +1,6 @@
 # interface/styles.py
 # Configuration des styles Tkinter
 
-import tkinter as tk
 from tkinter import ttk
 
 def configurer_styles():
@@ -12,7 +11,7 @@ def configurer_styles():
     style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
     
     # Style des boutons
-    style.configure("Primary.TButton", font=("Arial", 10, "bold"), background="#4CAF50")
+    style.configure("Primary.TButton", font=("Arial", 10, "bold"))
     
     # Style des LabelFrames
     style.configure("TLabelframe", font=("Arial", 10, "bold"))

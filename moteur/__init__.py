@@ -1,14 +1,14 @@
 # moteur/__init__.py
-"""Package du moteur de calcul."""
+"""Package du moteur de calcul.
+
+Les données chargées (enseignants, niveaux, ...) sont des variables de
+moteur.calcul, remplacées à chaque chargement : les lire via
+`from moteur import calcul` puis `calcul.enseignants`, jamais par
+`from moteur.calcul import enseignants` au chargement d'un module (copie figée).
+"""
 
 from .calcul import (
-    enseignants, enseignants_data, niveaux, niveaux_data,
-    effectifs, horaire_volume, max_par_enseignant,
-    nb_total_niveaux, nb_niveaux_max_effectif,
-    data, total_heures, nb_niveaux_utilises, verifier_horaire,
-    solution_to_tuple, verifier_contrainte_blocs_rapide,
-    get_nb_groupes_possibles, generer_combinaisons_enseignant,
-    combinaisons_valides, rechercher_solutions, enseignants_sans_service,
-    RechercheAnnulee,
-    charger_donnees
+    charger_donnees, lire_nombre, total_heures, nb_niveaux_utilises, verifier_horaire,
+    verifier_contrainte_blocs_rapide, combinaisons_valides,
+    rechercher_solutions, enseignants_sans_service, RechercheAnnulee,
 )

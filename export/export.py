@@ -2,7 +2,6 @@
 # Fonctions d'export CSV et TXT - Version corrigée avec données dynamiques
 
 import csv
-import os
 from datetime import datetime
 
 def get_nom_fichier_defaut(extension, matiere=""):
@@ -24,7 +23,7 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
     # Importer les données dynamiquement pour avoir les valeurs actuelles
     from moteur.calcul import (
         enseignants, niveaux, niveaux_data, enseignants_data,
-        effectifs, data, total_heures, nb_niveaux_utilises,
+        effectifs, total_heures, nb_niveaux_utilises,
         NB_NIVEAUX_MAX_STRUCTURE, nb_total_niveaux, nb_niveaux_max_effectif
     )
     
@@ -188,7 +187,7 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
     # Importer les données dynamiquement pour avoir les valeurs actuelles
     from moteur.calcul import (
         enseignants, niveaux, niveaux_data, enseignants_data,
-        effectifs, data, total_heures, nb_niveaux_utilises,
+        effectifs, total_heures, nb_niveaux_utilises,
         NB_NIVEAUX_MAX_STRUCTURE, nb_total_niveaux, nb_niveaux_max_effectif
     )
     

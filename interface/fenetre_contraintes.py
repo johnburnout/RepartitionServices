@@ -7,7 +7,7 @@ import json
 import os
 import threading
 import time
-from moteur.calcul import charger_donnees
+from moteur.calcul import charger_donnees, lire_nombre
 
 
 # Fichier d'exemple livré avec le logiciel : jamais écrasé par « Sauvegarder »
@@ -18,20 +18,9 @@ FICHIER_EXEMPLE = "preferences_defaut.json"
 LIMITE_SOLUTIONS = 1000
 
 
-def _float(texte, defaut=None):
-    """Convertit une saisie ("18", "2,5", "9.0 ⚠️") en float, ou `defaut`."""
-    texte = str(texte).replace("⚠️", "").replace(",", ".").strip()
-    if not texte:
-        return defaut
-    try:
-        return float(texte)
-    except ValueError:
-        return defaut
-
-
 def _entier(texte, minimum=0):
     """Convertit une saisie ("3", "3.0") en entier >= minimum, ou None."""
-    x = _float(texte)
+    x = lire_nombre(texte)
     if x is None or x != int(x) or x < minimum:
         return None
     return int(x)
@@ -93,8 +82,8 @@ class FenetreContraintes:
             try:
                 with open(self.fichier_preferences, 'r', encoding='utf-8') as f:
                     prefs = json.load(f)
-            except:
-                pass
+            except (OSError, ValueError):
+                pass    # fichier illisible : on garde les valeurs du moteur
               
         for e in self.enseignants_liste:
             if e not in self.vars:
@@ -332,8 +321,8 @@ class FenetreContraintes:
             if e not in self.vars:
                 continue
             v = self.vars[e]
-            bloc1 = _float(v["bloc1"].get())
-            bloc2 = _float(v["bloc2"].get())
+            bloc1 = lire_nombre(v["bloc1"].get())
+            bloc2 = lire_nombre(v["bloc2"].get())
             contrainte_repartition = [bloc1, bloc2] if bloc1 is not None and bloc2 is not None else None
             prefs["enseignants"][e] = {
                 "hp": v["hp"].get().strip(),
@@ -369,14 +358,14 @@ class FenetreContraintes:
                 continue
             v = self.vars[e]
             hp = v["hp"].get().strip()
-            if (_float(hp) or 0) <= 0:
+            if (lire_nombre(hp) or 0) <= 0:
                 erreurs.append(f"{e} : HP « {hp} » invalide (nombre d'heures > 0)")
             hsa = v["hsa"].get().strip()
-            if hsa and (_float(hsa) is None or _float(hsa) < 0):
+            if hsa and (lire_nombre(hsa) is None or lire_nombre(hsa) < 0):
                 erreurs.append(f"{e} : HSA « {hsa} » invalide (nombre d'heures >= 0, ou vide)")
             b1 = v["bloc1"].get().replace("⚠️", "").strip()
             b2 = v["bloc2"].get().replace("⚠️", "").strip()
-            if (b1 or b2) and ((_float(b1) or 0) <= 0 or (_float(b2) or 0) <= 0):
+            if (b1 or b2) and ((lire_nombre(b1) or 0) <= 0 or (lire_nombre(b2) or 0) <= 0):
                 erreurs.append(f"{e} : blocs « {b1} » et « {b2} » invalides (remplir les deux, ou aucun)")
             for n in self.niveaux_liste:
                 if n not in v:
@@ -466,12 +455,7 @@ class FenetreContraintes:
             self.sauvegarder_preferences(chemin)
     
     def a_propos(self):
-        messagebox.showinfo("À propos", 
-            "Saisie des contraintes - v2.2\n\n"
-            "Développé par Jean Roussie\n"
-            "Collège La Boétie - Sarlat\n"
-            "2026\n\n"
-            "Langage : Python 3 / Tkinter")
+        self.parent_principal.a_propos()
     
     def mettre_a_jour_affichage_niveaux(self):
         if not self.niveaux_data_liste:
@@ -503,13 +487,8 @@ class FenetreContraintes:
         total_hsa = 0
         for e in self.enseignants_liste:
             if e in self.vars:
-                hp_str = self.vars[e]["hp"].get().strip()
-                hsa_str = self.vars[e]["hsa"].get().strip()
-                try:
-                    total_hp += float(hp_str.replace(",", ".")) if hp_str else 0
-                    total_hsa += float(hsa_str.replace(",", ".")) if hsa_str else 0
-                except ValueError:
-                    pass
+                total_hp += lire_nombre(self.vars[e]["hp"].get(), 0.0)
+                total_hsa += lire_nombre(self.vars[e]["hsa"].get(), 0.0)
         return total_hp, total_hsa
     
     def mettre_a_jour_total_heures(self):
@@ -560,28 +539,22 @@ class FenetreContraintes:
             total_heures = 0
             for n in self.niveaux_liste:
                 if n in self.vars[e]:
-                    max_val = self.vars[e][n]["max"].get().strip()
-                    if max_val:
-                        try:
-                            total_heures += int(max_val) * self.niveaux_dict.get(n, {}).get("heures", 4)
-                        except ValueError:
-                            pass
+                    nb = _entier(self.vars[e][n]["max"].get())
+                    if nb:
+                        total_heures += nb * self.niveaux_dict.get(n, {}).get("heures", 4)
             
-            hp_str = self.vars[e]["hp"].get().strip() if e in self.vars and "hp" in self.vars[e] else "18"
-            hsa_str = self.vars[e]["hsa"].get().strip() if e in self.vars and "hsa" in self.vars[e] else "0"
-            
-            try:
-                hp = float(hp_str.replace(",", "."))
-                hsa = float(hsa_str.replace(",", "."))
-                max_possible = hp + hsa
-                if total_heures == 0:
-                    resultats[e] = {"compatible": True, "total": 0, "max": max_possible, "message": "Non saisi"}
-                elif total_heures <= max_possible:
-                    resultats[e] = {"compatible": True, "total": total_heures, "max": max_possible, "message": "OK"}
-                else:
-                    resultats[e] = {"compatible": False, "total": total_heures, "max": max_possible, "message": f"Dépassement de {total_heures - max_possible:.1f}h"}
-            except ValueError:
+            hp = lire_nombre(self.vars[e]["hp"].get())
+            hsa = lire_nombre(self.vars[e]["hsa"].get(), 0.0)
+            if hp is None or hsa is None:
                 resultats[e] = {"compatible": True, "total": 0, "max": 0, "message": "Erreur de saisie"}
+                continue
+            max_possible = hp + hsa
+            if total_heures == 0:
+                resultats[e] = {"compatible": True, "total": 0, "max": max_possible, "message": "Non saisi"}
+            elif total_heures <= max_possible:
+                resultats[e] = {"compatible": True, "total": total_heures, "max": max_possible, "message": "OK"}
+            else:
+                resultats[e] = {"compatible": False, "total": total_heures, "max": max_possible, "message": f"Dépassement de {total_heures - max_possible:.1f}h"}
         
         return resultats
     
@@ -1057,35 +1030,23 @@ class FenetreContraintes:
             self.charger_valeurs_depuis_moteur()
     
     def calculer_bloc2(self, enseignant):
-        hp_str = self.vars[enseignant]["hp"].get().strip()
-        bloc1_str = self.vars[enseignant]["bloc1"].get().strip()
+        hp = lire_nombre(self.vars[enseignant]["hp"].get())
+        bloc1 = lire_nombre(self.vars[enseignant]["bloc1"].get())
         
-        if hp_str and bloc1_str:
-            try:
-                hp = float(hp_str.replace(",", "."))
-                bloc1 = float(bloc1_str.replace(",", "."))
-                bloc2 = hp - bloc1
-                if bloc2 > 0:
-                    self.vars[enseignant]["bloc2"].set(f"{bloc2:.1f}")
-                else:
-                    self.vars[enseignant]["bloc2"].set("")
-            except ValueError:
-                pass
+        if hp is not None and bloc1 is not None:
+            bloc2 = hp - bloc1
+            self.vars[enseignant]["bloc2"].set(f"{bloc2:.1f}" if bloc2 > 0 else "")
     
     def verifier_blocs(self, enseignant):
-        hp_str = self.vars[enseignant]["hp"].get().strip()
-        bloc1_str = self.vars[enseignant]["bloc1"].get().strip()
-        bloc2_str = self.vars[enseignant]["bloc2"].get().strip()
+        texte_bloc2 = self.vars[enseignant]["bloc2"].get()
+        if "⚠️" in texte_bloc2:
+            return      # avertissement déjà affiché
+        hp = lire_nombre(self.vars[enseignant]["hp"].get())
+        bloc1 = lire_nombre(self.vars[enseignant]["bloc1"].get())
+        bloc2 = lire_nombre(texte_bloc2)
         
-        if hp_str and bloc1_str and bloc2_str:
-            try:
-                hp = float(hp_str.replace(",", "."))
-                bloc1 = float(bloc1_str.replace(",", "."))
-                bloc2 = float(bloc2_str.replace(",", "."))
-                if abs(bloc1 + bloc2 - hp) > 0.01:
-                    self.vars[enseignant]["bloc2"].set(f"{bloc2:.1f} ⚠️")
-            except ValueError:
-                pass
+        if None not in (hp, bloc1, bloc2) and abs(bloc1 + bloc2 - hp) > 0.01:
+            self.vars[enseignant]["bloc2"].set(f"{bloc2:.1f} ⚠️")
     
     def sauvegarder_preferences(self, chemin=None):
         """Enregistre la saisie dans `chemin` (choisi via « Enregistrer sous »)
