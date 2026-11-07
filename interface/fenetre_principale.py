@@ -216,7 +216,7 @@ class FenetrePrincipale:
                 {"nom": "3e", "heures": 4.0, "groupes": 7, "max_par_enseignant": 2}
             ],
             "nb_niveaux_max_global": 3,
-            "version": "2.0",
+            "version": VERSION,
             "enseignants_liste": [],
             "etablissement": "",
             "matiere": ""

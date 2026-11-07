@@ -34,7 +34,8 @@ class FenetreResultats:
         self.niveaux = niveaux
         self.data = data
         
-        self.solutions_affichees = min(100, self.nb_solutions)
+        # Toutes les solutions trouvées (la recherche en limite déjà le nombre)
+        self.solutions_affichees = self.nb_solutions
         
         self.creer_widgets()
         self.mettre_a_jour_navigation()
@@ -55,10 +56,6 @@ class FenetreResultats:
             titre += f"au moins {self.nb_solutions} solutions (recherche limitée)"
         
         ttk.Label(cadre_titre, text=titre, font=("Arial", 12, "bold")).pack(side=tk.LEFT)
-        
-        if self.nb_solutions > 100:
-            ttk.Label(cadre_titre, text=f" (affichage des {self.solutions_affichees} premières)", 
-                      font=("Arial", 10, "italic")).pack(side=tk.LEFT)
         
         # --- Cadre de navigation ---
         cadre_nav = ttk.Frame(self.parent)

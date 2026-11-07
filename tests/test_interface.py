@@ -13,6 +13,7 @@ from tkinter import messagebox
 def app(monkeypatch):
     for nom in ("showinfo", "showwarning", "showerror"):
         monkeypatch.setattr(messagebox, nom, lambda *a, **k: None)
+    monkeypatch.setattr(messagebox, "askyesno", lambda *a, **k: True)
     try:
         racine = tk.Tk()
     except tk.TclError:
@@ -76,3 +77,32 @@ def test_fichier_mal_forme_sans_plantage(app, tmp_path):
     assert v["Fanny"]["hp"].get() == "18.0"
     assert v["Agnès"]["6e"]["max"].get() == ""
     assert v["Hubert"]["6e"]["max"].get() == ""
+
+
+def test_fermeture_avec_erreurs(app, monkeypatch):
+    app.ouvrir_contraintes()
+    f = app.fenetre_contraintes
+    f.vars["Fanny"]["hp"].set("abc")
+
+    # Fermeture refusée : la fenêtre et la saisie restent
+    monkeypatch.setattr(messagebox, "askyesno", lambda *a, **k: False)
+    f.fermer_fenetre()
+    assert app.fenetre_contraintes_ouverte() is f
+    assert f.vars["Fanny"]["hp"].get() == "abc"
+
+    # Fermeture confirmée : HP remplacé par la valeur par défaut
+    monkeypatch.setattr(messagebox, "askyesno", lambda *a, **k: True)
+    f.fermer_fenetre()
+    app.parent.update()
+    assert app.fenetre_contraintes_ouverte() is None
+    from moteur import calcul
+    assert calcul.data["Fanny"]["horaire"][0] == 18.0
+
+
+def test_version_enregistree(app, tmp_path):
+    from version import VERSION
+    app.ouvrir_contraintes()
+    f = app.fenetre_contraintes
+    chemin = tmp_path / "prefs.json"
+    f.sauvegarder_preferences(str(chemin))
+    assert json.loads(chemin.read_text(encoding="utf-8"))["version"] == VERSION

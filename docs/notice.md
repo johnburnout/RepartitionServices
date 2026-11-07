@@ -140,7 +140,7 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 | 📂 **Charger** / *Fichier › Ouvrir les préférences…* | Charge un fichier de préférences (la saisie affichée est remplacée par celle du fichier) |
 | 🔄 **Réinitialiser** | Remet toutes les saisies à zéro (HP = 18, HSA = 0, champs vides) après confirmation |
 | 🔍 **Lancer la recherche** | Calcule les solutions (§ 5) |
-| ❌ **Fermer** | Ferme la fenêtre en conservant toute la saisie pour la session (pensez à sauvegarder pour la garder d'une fois sur l'autre) |
+| ❌ **Fermer** | Ferme la fenêtre en conservant toute la saisie pour la session (pensez à sauvegarder pour la garder d'une fois sur l'autre). Si la saisie contient des erreurs, elles sont listées et une confirmation est demandée : les horaires et blocs illisibles seraient remplacés par les valeurs par défaut |
 
 ---
 
@@ -161,7 +161,7 @@ La barre d'état affiche en continu, pour chaque enseignant, le total d'heures c
 
 ## 6. La fenêtre « Résultats »
 
-Le titre indique le nombre de solutions trouvées (« au moins 1 000 » si la limite de la recherche est atteinte, mention reprise dans les exports). **Au maximum 100 solutions** sont consultables à l'écran.
+Le titre indique le nombre de solutions trouvées (« au moins 1 000 » si la limite de la recherche est atteinte, mention reprise dans les exports). Toutes les solutions trouvées sont consultables à l'écran.
 
 - **Navigation** : ◀◀ Premier, ◀ Précédent, Suivant ▶, Dernier ▶▶, ou saisissez un numéro puis **Aller**.
 - **Tableau** : pour chaque enseignant, le nombre de groupes par niveau, le **total d'heures** avec ✅ (conforme à HP/HSA) ou ❌, et le nombre de niveaux (**NbNiv**).
@@ -170,8 +170,8 @@ Export :
 
 | Bouton | Contenu |
 |---|---|
-| 📄 **Exporter TXT** | Rapport lisible : structure, enseignants, contraintes saisies (`<=2` = au plus 2, `=2` = exactement 2, niveau souhaité, nb de niveaux max) et les **50 premières** solutions avec totaux par niveau et effectifs attendus |
-| 📊 **Exporter CSV** | Même contenu, ouvrable dans un tableur (Excel, LibreOffice), jusqu'à **1 000** solutions |
+| 📄 **Exporter TXT** | Rapport lisible : structure, enseignants, contraintes saisies (`<=2` = au plus 2, `=2` = exactement 2, niveau souhaité, nb de niveaux max) et toutes les solutions trouvées, avec totaux par niveau et effectifs attendus |
+| 📊 **Exporter CSV** | Même contenu, ouvrable dans un tableur (Excel, LibreOffice) |
 | 📋 **Copier** | Copie la solution affichée dans le presse-papiers (colonnes séparées par des tabulations, à coller dans un tableur ou un courriel) |
 
 Les fichiers sont nommés par défaut `<Matière>_AAAAMMJJ-HHMM.txt/.csv` (ou `repartition_…` si aucune matière n'est saisie).

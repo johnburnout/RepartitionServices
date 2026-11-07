@@ -1,6 +1,8 @@
 # moteur/calcul.py
 # Moteur de calcul
 
+import math
+
 # ============================================================
 # DONNÉES GLOBALES (chargées dynamiquement)
 # ============================================================
@@ -21,20 +23,22 @@ NB_NIVEAUX_MAX_STRUCTURE = 3
 _EPS = 0.01
 
 def lire_nombre(valeur, defaut=None):
-    """Convertit une saisie ("18", "2,5", "", None) en float, ou `defaut`."""
-    if isinstance(valeur, bool):
+    """Convertit une saisie ("18", "2,5", "", None) en float, ou `defaut`.
+
+    « nan », « inf » (acceptés par float()) sont refusés comme les autres
+    saisies illisibles.
+    """
+    if isinstance(valeur, bool) or valeur is None:
         return defaut
     if isinstance(valeur, (int, float)):
-        return float(valeur)
-    if valeur is None:
-        return defaut
-    texte = str(valeur).replace("⚠️", "").replace(",", ".").strip()
-    if not texte:
-        return defaut
-    try:
-        return float(texte)
-    except ValueError:
-        return defaut
+        x = float(valeur)
+    else:
+        texte = str(valeur).replace("⚠️", "").replace(",", ".").strip()
+        try:
+            x = float(texte)
+        except ValueError:
+            return defaut
+    return x if math.isfinite(x) else defaut
 
 
 def _vide(valeur):

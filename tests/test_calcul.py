@@ -163,6 +163,7 @@ def test_valeurs_illisibles_remplacees():
 @pytest.mark.parametrize("texte, attendu", [
     ("18", 18.0), ("2,5", 2.5), (" 3 ", 3.0), (4, 4.0), ("9.0 ⚠️", 9.0),
     ("", None), (None, None), ("abc", None), (True, None),
+    ("nan", None), ("inf", None), ("-inf", None), (float("nan"), None), (float("inf"), None),
 ])
 def test_lire_nombre(texte, attendu):
     assert calcul.lire_nombre(texte) == attendu
@@ -186,3 +187,22 @@ def test_blocs():
     assert verif({"6e": 2, "5e": 2}, (11, 8))
     assert verif({"6e": 2, "5e": 2}, (9, 9))           # dépassement d'1 h toléré
     assert not verif({"6e": 0, "5e": 4}, (9, 9))       # 16 h < 18 h
+
+
+# ------------------------------------------------------------
+# Exports
+# ------------------------------------------------------------
+
+def test_exports_toutes_les_solutions(exemple, tmp_path):
+    from export.export import sauvegarder_texte, sauvegarder_csv
+    solutions = calcul.rechercher_solutions({}, {}, {}, limite=120)
+    contraintes, souhaits, nb_max = contraintes_depuis(exemple)
+    txt, csv = tmp_path / "r.txt", tmp_path / "r.csv"
+    sauvegarder_texte(solutions, contraintes, souhaits, nb_max, str(txt))
+    sauvegarder_csv(solutions, contraintes, souhaits, nb_max, str(csv))
+    texte = txt.read_text(encoding="utf-8")
+    assert "--- Solution 120 ---" in texte
+    assert "Souhait" in texte and "NbNivMax" in texte
+    tableur = csv.read_text(encoding="utf-8-sig")
+    assert "SOLUTION 120" in tableur
+    assert "Niveau souhaité,Nb niveaux max" in tableur

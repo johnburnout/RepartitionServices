@@ -8,6 +8,7 @@ import os
 import threading
 import time
 from moteur.calcul import charger_donnees, lire_nombre
+from version import VERSION
 
 
 # Fichier d'exemple livré avec le logiciel : jamais écrasé par « Sauvegarder »
@@ -275,7 +276,24 @@ class FenetreContraintes:
         self.charger_valeurs_depuis_moteur()
     
     def fermer_fenetre(self):
-        """Ferme la fenêtre après avoir transmis la saisie au moteur."""
+        """Ferme la fenêtre après avoir transmis la saisie au moteur.
+
+        Une saisie illisible (HP, HSA, blocs…) serait remplacée par une valeur
+        par défaut : l'utilisateur est prévenu et peut annuler la fermeture.
+        """
+        erreurs = self.valider_saisie()
+        if erreurs:
+            lignes = erreurs[:15]
+            if len(erreurs) > 15:
+                lignes.append(f"… et {len(erreurs) - 15} autre(s)")
+            if not messagebox.askyesno("Saisie à corriger",
+                    "La saisie contient des erreurs :\n\n" +
+                    "\n".join("• " + l for l in lignes) +
+                    "\n\nLes horaires et blocs illisibles seront remplacés par les "
+                    "valeurs par défaut (18 h, 0 HSA, sans blocs).\n\n"
+                    "Fermer quand même ?",
+                    icon="warning", parent=self.parent):
+                return
         self.appliquer_au_moteur()
         self.parent.destroy()
     
@@ -316,7 +334,7 @@ class FenetreContraintes:
             "enseignants": {},
             "niveaux": [d.copy() for d in self.niveaux_data_liste],
             "nb_niveaux_max_global": self.lire_nb_max_global(),
-            "version": "2.0",
+            "version": VERSION,
             "enseignants_liste": list(self.enseignants_liste),
             "etablissement": self.var_etablissement.get().strip(),
             "matiere": self.var_matiere.get().strip()

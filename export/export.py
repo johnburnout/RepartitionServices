@@ -129,12 +129,7 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
             f.write("AUCUNE SOLUTION TROUVÉE\n")
             return
         
-        max_solutions = 50
-        if len(solutions) > max_solutions:
-            f.write(f"Affichage des {max_solutions} premières solutions sur {len(solutions)}\n")
-            f.write("\n")
-        
-        for idx, sol in enumerate(solutions[:max_solutions], 1):
+        for idx, sol in enumerate(solutions, 1):
             f.write(f"--- Solution {idx} ---\n")
             
             # Vérifier si des données existent
@@ -178,9 +173,6 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
                     f.write(f"{effectifs.get(n, 0):>6}")
                 f.write("\n")
             f.write("\n")
-        
-        if len(solutions) > max_solutions:
-            f.write(f"... {len(solutions) - max_solutions} autres solutions non affichées\n")
     
     return chemin
 
@@ -288,14 +280,8 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
             writer.writerow(["AUCUNE SOLUTION TROUVÉE"])
             return
         
-        # Export des solutions (max 1000)
-        max_solutions = 1000
-        if len(solutions) > max_solutions:
-            writer.writerow([f"Affichage des {max_solutions} premières solutions sur {len(solutions)}"])
-            writer.writerow([])
-        
         # Export de chaque solution
-        for idx, sol in enumerate(solutions[:max_solutions], 1):
+        for idx, sol in enumerate(solutions, 1):
             # Ligne vide entre les solutions
             if idx > 1:
                 writer.writerow([])
@@ -344,9 +330,5 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
                 att_row.append("")
                 att_row.append("")
                 writer.writerow(att_row)
-        
-        if len(solutions) > max_solutions:
-            writer.writerow([])
-            writer.writerow([f"... {len(solutions) - max_solutions} autres solutions non affichées"])
     
     return chemin

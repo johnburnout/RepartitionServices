@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.13'
 
     - name: Install pytest
       run: pip install pytest
@@ -38,12 +38,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4  # Mise à jour vers v4
+    - uses: actions/checkout@v7
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.13'
     
     - name: Install dependencies
       run: |
@@ -67,7 +67,7 @@ jobs:
           main.py
     
     - name: Upload Windows artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: RepartitionServices-Windows
         path: dist/RepartitionServices.exe
@@ -77,12 +77,12 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4  # Mise à jour vers v4
+    - uses: actions/checkout@v7
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.13'
     
     - name: Install dependencies
       run: |
@@ -101,7 +101,7 @@ jobs:
           "dist/RepartitionServices.dmg"
     
     - name: Upload macOS artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: RepartitionServices-macOS
         path: dist/RepartitionServices.dmg
@@ -116,13 +116,13 @@ jobs:
 
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: artefacts
         merge-multiple: true
 
     - name: Attach files to release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ github.event.release.tag_name || inputs.tag }}
         files: |
