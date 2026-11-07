@@ -22,14 +22,19 @@ RepartitionServices calcule **toutes les répartitions de services possibles** e
 
 ## 1. Installation et lancement
 
+L'application n'est pas signée par un certificat Apple ou Microsoft (signature payante). macOS et Windows affichent donc un avertissement au **premier lancement**. Il suffit de l'autoriser une fois : les lancements suivants se font normalement.
+
 ### macOS
 1. Ouvrez `RepartitionServices.dmg`.
 2. Copiez `RepartitionServices.app` sur votre disque (par exemple dans *Applications*).
-3. Lancez l'application. Au premier lancement, si macOS bloque l'ouverture : clic droit sur l'application → **Ouvrir**.
+3. Lancez l'application. macOS refuse de l'ouvrir (« Apple n'a pas pu vérifier… ») : cliquez sur **OK** (ou **Terminé**), sans la placer dans la corbeille.
+4. Ouvrez **Réglages Système → Confidentialité et sécurité**. En bas de la page, un message indique que « RepartitionServices » a été bloquée : cliquez sur **Ouvrir quand même**, puis confirmez (mot de passe ou Touch ID).
+
+Sur macOS 14 ou une version antérieure, il suffit aussi de faire un clic droit sur l'application → **Ouvrir**, puis **Ouvrir** dans la fenêtre qui s'affiche. Depuis macOS 15, seule la méthode des Réglages Système fonctionne.
 
 ### Windows
-1. Ouvrez (montez) `RepartitionServices.iso`.
-2. Exécutez `Programme/RepartitionServices.exe` (vous pouvez le copier sur votre disque au préalable).
+1. Copiez `RepartitionServices.exe` sur votre disque (par exemple dans *Documents*). Aucune installation n'est nécessaire.
+2. Lancez-le. Si la fenêtre bleue « Windows a protégé votre ordinateur » (SmartScreen) s'affiche : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
 
 ### Depuis les sources (Python 3 + Tkinter)
 ```bash
@@ -232,6 +237,8 @@ Les niveaux et enseignants ajoutés, modifiés ou supprimés sont pris en compte
 | ❌ dans la barre d'état pour un enseignant | Les maxima saisis dépassent son HP + HSA (simple avertissement) |
 | ⚠️ dans le 2nd bloc | 1er bloc + 2nd bloc ≠ HP : corrigez l'un des deux |
 | « Veuillez entrer un nombre valide » | Un champ de niveau contient autre chose qu'un entier positif |
+| macOS : « Apple n'a pas pu vérifier… » ou « l'application est endommagée » | Autorisez-la dans **Réglages Système → Confidentialité et sécurité → Ouvrir quand même** (§ 1). Si le message « endommagée » persiste, exécutez dans le Terminal : `xattr -dr com.apple.quarantine /Applications/RepartitionServices.app` |
+| Windows : « Windows a protégé votre ordinateur » | **Informations complémentaires** → **Exécuter quand même** (§ 1) |
 | Préférences non chargées au démarrage | Vérifiez le nom et l'emplacement du fichier (§ 7) ou chargez-le manuellement |
 
 ---
