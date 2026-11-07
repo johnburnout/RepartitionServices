@@ -15,9 +15,28 @@ on:
         default: ""
 
 jobs:
+  # Tests du moteur (ceux de l'interface sont ignorés : pas d'affichage)
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install pytest
+      run: pip install pytest
+
+    - name: Run tests
+      run: python -m pytest -v
+
   build-windows:
+    needs: tests
     runs-on: windows-latest
-    
+
     steps:
     - uses: actions/checkout@v4  # Mise à jour vers v4
     
@@ -54,6 +73,7 @@ jobs:
         path: dist/RepartitionServices.exe
 
   build-macos:
+    needs: tests
     runs-on: macos-latest
     
     steps:

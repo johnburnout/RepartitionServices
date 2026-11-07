@@ -20,6 +20,10 @@ class FenetrePrincipale:
         self.matiere = ""
         self.fichier_preferences = None
         self.fenetre_contraintes = None
+        # Préférences de la session (dernier fichier chargé, puis saisie de la
+        # fenêtre des contraintes) : contraintes par niveau, niveau souhaité,
+        # nb de niveaux max, que le moteur ne conserve pas
+        self.preferences_session = None
 
         # Variables globales pour les contraintes
         self.contraintes_utilisateur = {}
@@ -219,6 +223,7 @@ class FenetrePrincipale:
         }
         
         charger_donnees(prefs)
+        self.preferences_session = None
         self.mettre_a_jour_donnees()
         self.mettre_a_jour_affichage()
         self.statusbar.config(text="⚠️ Aucun fichier de préférences - Données par défaut chargées")
@@ -268,6 +273,7 @@ class FenetrePrincipale:
         self.mettre_a_jour_titre()
         self.mettre_a_jour_affichage()
         self.fichier_preferences = chemin
+        self.preferences_session = prefs
         self.btn_resultats.config(state=tk.DISABLED)
         self.solutions = []
         self.statusbar.config(text=f"✅ Préférences chargées : {os.path.basename(chemin)}")

@@ -170,7 +170,7 @@ Export :
 
 | Bouton | Contenu |
 |---|---|
-| 📄 **Exporter TXT** | Rapport lisible : structure, enseignants, contraintes saisies (`<=2` = au plus 2, `=2` = exactement 2) et les **50 premières** solutions avec totaux par niveau et effectifs attendus |
+| 📄 **Exporter TXT** | Rapport lisible : structure, enseignants, contraintes saisies (`<=2` = au plus 2, `=2` = exactement 2, niveau souhaité, nb de niveaux max) et les **50 premières** solutions avec totaux par niveau et effectifs attendus |
 | 📊 **Exporter CSV** | Même contenu, ouvrable dans un tableur (Excel, LibreOffice), jusqu'à **1 000** solutions |
 | 📋 **Copier** | Copie la solution affichée dans le presse-papiers (colonnes séparées par des tabulations, à coller dans un tableur ou un courriel) |
 

@@ -14,6 +14,14 @@ Python 3 avec Tkinter, sans autre dépendance :
 python3 main.py
 ```
 
+## Tests
+Tests du moteur et de la fenêtre des contraintes, lancés aussi par GitHub Actions avant chaque build :
+
+```
+pip install pytest
+python3 -m pytest
+```
+
 ## Construire l'application
 Les exécutables Windows (`.exe`) et macOS (`.dmg`) sont construits par GitHub Actions
 (`.github/workflows/build.yml`) à chaque push sur `main`, et ajoutés aux releases publiées.

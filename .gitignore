@@ -49,3 +49,6 @@ RepartitionServices_iso/
 *.iso
 *.zip
 *.tar.gz
+
+# Tests
+.pytest_cache/

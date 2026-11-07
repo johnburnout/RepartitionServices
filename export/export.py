@@ -13,6 +13,13 @@ def get_nom_fichier_defaut(extension, matiere=""):
         return f"{nom_matiere}_{date_str}.{extension}"
     return f"repartition_{date_str}.{extension}"
 
+def _souhait_et_nb_max(e, niveaux_souhaites, nb_niveaux_max_utilisateur):
+    """Niveau souhaité et nb de niveaux max utilisés par la recherche ("" si aucun)."""
+    souhait = (niveaux_souhaites or {}).get(e) or ""
+    nb_max = (nb_niveaux_max_utilisateur or {}).get(e)
+    return souhait, "" if nb_max is None else nb_max
+
+
 def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites, 
                       nb_niveaux_max_utilisateur, chemin=None, etablissement="", matiere="",
                       complet=True):
@@ -87,7 +94,7 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
             f.write(f"{'Enseignant':<12}")
             for n in niveaux:
                 f.write(f"{n:>6}")
-            f.write("\n")
+            f.write(f"  {'Souhait':<9}{'NbNivMax':>8}\n")
             for e in enseignants:
                 f.write(f"{e:<12}")
                 for n in niveaux:
@@ -102,7 +109,8 @@ def sauvegarder_texte(solutions, contraintes_utilisateur, niveaux_souhaites,
                             f.write(f"{'':>6}")
                     else:
                         f.write(f"{'':>6}")
-                f.write("\n")
+                souhait, nb_max = _souhait_et_nb_max(e, niveaux_souhaites, nb_niveaux_max_utilisateur)
+                f.write(f"  {souhait:<9}{nb_max:>8}\n")
         else:
             f.write("Aucune contrainte saisie\n")
         f.write("\n")
@@ -239,7 +247,7 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
         # Contraintes par niveau
         writer.writerow(["CONTRAINTES SAISIES PAR NIVEAU"])
         if enseignants and niveaux:
-            header = ["Enseignant"] + niveaux + ["Observations"]
+            header = ["Enseignant"] + niveaux + ["Niveau souhaité", "Nb niveaux max", "Observations"]
             writer.writerow(header)
             
             for e in enseignants:
@@ -261,6 +269,7 @@ def sauvegarder_csv(solutions, contraintes_utilisateur, niveaux_souhaites,
                             row.append("")
                 else:
                     row.extend([""] * len(niveaux))
+                row.extend(_souhait_et_nb_max(e, niveaux_souhaites, nb_niveaux_max_utilisateur))
                 row.append(", ".join(observations) if observations else "")
                 writer.writerow(row)
         else:

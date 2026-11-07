@@ -70,21 +70,22 @@ class FenetreContraintes:
         self.nb_niveaux_max_effectif = nb_max
       
     def charger_valeurs_depuis_moteur(self):
-        """Charge toutes les valeurs depuis le moteur et les préférences."""
+        """Charge toutes les valeurs depuis le moteur (HP, HSA, blocs) et les
+        préférences de la session (contraintes par niveau, niveau souhaité,
+        nb de niveaux max) : dernier fichier chargé ou dernière saisie."""
         from moteur.calcul import data
-      
+
         if not hasattr(self, 'vars') or not self.vars:
             return
-      
-        # Charger les préférences depuis le fichier
-        prefs = None
-        if self.fichier_preferences and os.path.exists(self.fichier_preferences):
-            try:
-                with open(self.fichier_preferences, 'r', encoding='utf-8') as f:
-                    prefs = json.load(f)
-            except (OSError, ValueError):
-                pass    # fichier illisible : on garde les valeurs du moteur
-              
+
+        prefs = self.parent_principal.preferences_session
+        prefs_ens = prefs.get("enseignants") if isinstance(prefs, dict) else None
+        if not isinstance(prefs_ens, dict):
+            prefs_ens = {}
+
+        def texte(valeur):
+            return "" if valeur is None else str(valeur)
+
         for e in self.enseignants_liste:
             if e not in self.vars:
                 continue
@@ -100,25 +101,28 @@ class FenetreContraintes:
                 if "bloc2" in self.vars[e] and data[e]["contrainte_repartition"] is not None:
                     self.vars[e]["bloc2"].set(str(data[e]["contrainte_repartition"][1]))
                   
-            # 2. Charger les contraintes de niveau depuis les préférences
-            if prefs and e in prefs.get("enseignants", {}):
-                ens_prefs = prefs["enseignants"][e]
-              
-                # Nb niveaux max
-                if "nb_niveaux_max" in ens_prefs and "nb_niveaux_max" in self.vars[e]:
-                    self.vars[e]["nb_niveaux_max"].set(ens_prefs["nb_niveaux_max"])
-                  
-                # Niveau souhaité
-                if "niveau_souhait" in ens_prefs and "niveau_souhait" in self.vars[e]:
-                    self.vars[e]["niveau_souhait"].set(ens_prefs["niveau_souhait"])
-                  
-                # Contraintes par niveau (max, fixe)
-                if "niveaux" in ens_prefs:
-                    for n in self.niveaux_liste:
-                        if n in ens_prefs["niveaux"] and n in self.vars[e]:
-                            niv_data = ens_prefs["niveaux"][n]
-                            self.vars[e][n]["max"].set(niv_data.get("max", ""))
-                            self.vars[e][n]["fixe"].set(niv_data.get("fixe", False))
+            # 2. Contraintes de niveau depuis les préférences (valeurs de type
+            #    inattendu ignorées : le fichier peut avoir été modifié à la main)
+            ens_prefs = prefs_ens.get(e)
+            if not isinstance(ens_prefs, dict):
+                continue
+
+            # Nb niveaux max
+            if "nb_niveaux_max" in ens_prefs:
+                self.vars[e]["nb_niveaux_max"].set(texte(ens_prefs["nb_niveaux_max"]))
+
+            # Niveau souhaité
+            souhait = texte(ens_prefs.get("niveau_souhait"))
+            self.vars[e]["niveau_souhait"].set(souhait if souhait in self.niveaux_liste else "")
+
+            # Contraintes par niveau (max, fixe)
+            niveaux_prefs = ens_prefs.get("niveaux")
+            if isinstance(niveaux_prefs, dict):
+                for n in self.niveaux_liste:
+                    niv_data = niveaux_prefs.get(n)
+                    if isinstance(niv_data, dict) and n in self.vars[e]:
+                        self.vars[e][n]["max"].set(texte(niv_data.get("max")))
+                        self.vars[e][n]["fixe"].set(niv_data.get("fixe") is True)
                           
     def trace_var(self, var, callback):
         try:
@@ -398,6 +402,7 @@ class FenetreContraintes:
         apres = signature()
 
         pp = self.parent_principal
+        pp.preferences_session = prefs   # conservée pour la prochaine ouverture
         pp.etablissement = prefs["etablissement"]
         pp.matiere = prefs["matiere"]
         if avant != apres:
