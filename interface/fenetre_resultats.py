@@ -6,14 +6,14 @@ from tkinter import ttk, messagebox, filedialog
 import os
 from moteur.calcul import total_heures, nb_niveaux_utilises, verifier_horaire
 from export.export import sauvegarder_texte, sauvegarder_csv, get_nom_fichier_defaut
+from interface.geometrie import dimensionner
 
 class FenetreResultats:
     def __init__(self, parent, solutions, contraintes, niveaux_souhaites, nb_niveaux_max,
                  etablissement="", matiere="", complet=True):
         self.parent = parent
         self.parent.title(f"Résultats - {matiere} - {etablissement}" if etablissement else "Résultats")
-        self.parent.geometry("1100x650")
-        self.parent.minsize(900, 500)
+        dimensionner(self.parent, 1100, 650, 900, 500)
         self.parent.transient(parent.master)
         self.parent.grab_set()
         

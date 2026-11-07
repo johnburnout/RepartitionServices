@@ -9,6 +9,7 @@ import threading
 import time
 from moteur.calcul import charger_donnees, lire_nombre
 from version import VERSION
+from interface.geometrie import dimensionner
 
 
 # Fichier d'exemple livré avec le logiciel : jamais écrasé par « Sauvegarder »
@@ -31,8 +32,7 @@ class FenetreContraintes:
         self.parent = parent
         self.parent_principal = parent_principal
         self.parent.title("Saisie des contraintes")
-        self.parent.geometry("1300x800")
-        self.parent.minsize(1000, 600)
+        dimensionner(self.parent, 1300, 800, 1000, 600)
       
         # Fichier de préférences courant
         self.fichier_preferences = parent_principal.fichier_preferences
@@ -601,10 +601,15 @@ class FenetreContraintes:
         self.verifier_compatibilite_globale()
     
     def on_frame_configure(self, event):
+        self.on_canvas_configure()   # largeur utile du tableau changée (colonnes ajoutées…)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
-    def on_canvas_configure(self, event):
-        self.canvas.itemconfig(1, width=event.width)
+    def on_canvas_configure(self, event=None):
+        """Le tableau occupe toute la largeur visible, sans être rétréci en
+        dessous de sa largeur utile : sinon les colonnes de droite seraient
+        coupées au lieu de défiler (petit écran, affichage à 125 % ou 150 %)."""
+        largeur = max(self.canvas.winfo_width(), self.scrollable_frame.winfo_reqwidth())
+        self.canvas.itemconfig(1, width=largeur)
     
     def appliquer_nb_max_niveaux(self):
         try:

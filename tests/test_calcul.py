@@ -206,3 +206,40 @@ def test_exports_toutes_les_solutions(exemple, tmp_path):
     tableur = csv.read_text(encoding="utf-8-sig")
     assert "SOLUTION 120" in tableur
     assert "Niveau souhaité,Nb niveaux max" in tableur
+
+
+# ------------------------------------------------------------
+# Taille des fenêtres
+# ------------------------------------------------------------
+
+class FenetreFactice:
+    def __init__(self, largeur, hauteur):
+        self.ecran = (largeur, hauteur)
+        self.taille_min = self.geometrie = None
+
+    def winfo_screenwidth(self):
+        return self.ecran[0]
+
+    def winfo_screenheight(self):
+        return self.ecran[1]
+
+    def minsize(self, l, h):
+        self.taille_min = (l, h)
+
+    def geometry(self, g):
+        self.geometrie = g
+
+
+@pytest.mark.parametrize("ecran, taille, taille_min", [
+    ((1920, 1080), (1300, 800), (1000, 600)),   # grand écran : tailles souhaitées
+    ((1280, 720), (1216, 612), (1000, 600)),    # 1920x1080 à 150 %
+    ((1366, 768), (1297, 652), (1000, 600)),    # portable 1366x768
+    ((1024, 600), (972, 510), (972, 510)),      # très petit écran
+])
+def test_dimensionner(ecran, taille, taille_min):
+    from interface.geometrie import dimensionner
+    f = FenetreFactice(*ecran)
+    assert dimensionner(f, 1300, 800, 1000, 600) == taille
+    assert f.taille_min == taille_min
+    l, h = taille
+    assert f.geometrie.startswith(f"{l}x{h}+")

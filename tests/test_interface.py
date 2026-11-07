@@ -106,3 +106,20 @@ def test_version_enregistree(app, tmp_path):
     chemin = tmp_path / "prefs.json"
     f.sauvegarder_preferences(str(chemin))
     assert json.loads(chemin.read_text(encoding="utf-8"))["version"] == VERSION
+
+
+def test_tableau_defile_dans_une_fenetre_etroite(app):
+    app.ouvrir_contraintes()
+    f = app.fenetre_contraintes
+    f.parent.minsize(1, 1)
+    f.parent.geometry("900x600")
+    f.parent.update()
+    utile = f.scrollable_frame.winfo_reqwidth()
+    assert utile > f.canvas.winfo_width()          # le tableau ne tient pas
+    assert f.scrollable_frame.winfo_width() >= utile   # … il n'est pas coupé
+    x1 = int(float(f.canvas.cget("scrollregion").split()[2]))
+    assert x1 >= utile                              # … et peut défiler
+
+    f.parent.geometry("1600x800")
+    f.parent.update()
+    assert f.scrollable_frame.winfo_width() == f.canvas.winfo_width()  # pleine largeur

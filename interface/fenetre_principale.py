@@ -7,13 +7,13 @@ import json
 import os
 from moteur.calcul import charger_donnees
 from interface.styles import configurer_styles
+from interface.geometrie import dimensionner
 from version import VERSION
 
 class FenetrePrincipale:
     def __init__(self, parent):
         self.parent = parent
-        self.parent.geometry("1000x780")
-        self.parent.minsize(800, 680)
+        dimensionner(self.parent, 1000, 780, 800, 680)
         
         # Variables pour l'établissement et la matière
         self.etablissement = ""
