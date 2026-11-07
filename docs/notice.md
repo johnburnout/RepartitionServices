@@ -1,6 +1,6 @@
 # RepartitionServices — Notice d'utilisation
 
-*Version 2.3 — Jean Roussie, Collège La Boétie (Sarlat-La Canéda)*
+*Version 2.4 — Jean Roussie, Collège La Boétie (Sarlat-La Canéda)*
 
 RepartitionServices calcule **toutes les répartitions de services possibles** entre les professeurs d'une même matière, à partir de la structure de l'établissement (niveaux, horaires, nombre de groupes) et des souhaits ou contraintes de chaque enseignant.
 
